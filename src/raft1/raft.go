@@ -16,9 +16,15 @@ import (
 	//	"6.5840/labgob"
 	"6.5840/labrpc"
 	"6.5840/raftapi"
-	"6.5840/tester1"
+	tester "6.5840/tester1"
 )
 
+// 算法浓缩摘要
+// - 选举安全：在一个特定的任期内最多可以选出一个 Leader
+// - Leader Append-Only：Leader 从不覆盖或删除其日志中的条目；它只追加新条目
+// - 日志匹配：如果两个日志包含一个具有相同索引和任期的条目，那么这两个日志的所有条目到给定索引都是相同的
+// - Leader 的完整性：如果一个日志条目在某一任期中被 committed，那么该条目将出现在所有更高编号任期的 Leader 的日志中
+// - 状态机安全：如果一个服务器在其状态机上应用了一个给定索引的日志条目，那么其他服务器将永远不会为同一索引应用不用的日志条目
 
 // A Go object implementing a single Raft peer.
 type Raft struct {
@@ -32,6 +38,45 @@ type Raft struct {
 	// Look at the paper's Figure 2 for a description of what
 	// state a Raft server must maintain.
 
+	// 所有服务器上的持久性状态
+	// 在响应 RPC 之前，在稳定的存储上更新
+	currentTerm int        // 服务器看到的最新任期（首次启动时初始化为0，单调增加）
+	votedFor    int        // 当前任期内获得选票的 Candidate ID（如果没有则为空）
+	log         []LogEntry // 日志条目；每个条目包含状态机的命令，以及 Leader 收到条目的任期（第一个索引是1）
+
+	// 所有服务器上的易失性状态
+	commitIndex int // 已知被提交的最高日志条目的索引（初始化为0，单调增加）
+	lastApplied int // 已应用于状态机的最高日志条目的索引（初始化为0，单调增加）
+
+	// Leader 上的易失性状态
+	// 选举后重新初始化
+	nextIndex  []int // 对于每个服务器，要发送给该服务器的下一个日志条目的索引（初始化为 Leader 的最后一个日志索引+1）
+	matchIndex []int // 对于每个服务器，已知在服务器上复制的最高日志条目索引（初始化为0，单调增加）
+
+	// 新增的用于实现实验的字段
+	state        RaftState             // 服务器当前所处的状态
+	electionTime time.Time             // 用于记录当前服务器的选举超时时间
+	applyCh      chan raftapi.ApplyMsg // 用于向应用层提交信息
+}
+
+type RaftState int
+
+const (
+	Follower RaftState = iota
+	Candidate
+	Leader
+)
+
+type LogEntry struct {
+	Term    int
+	Command interface{}
+}
+
+// 服务器用于重置选举时间
+func (rf *Raft) resetElectionTimer() {
+	t := time.Now()
+	timeout := time.Duration(350+rand.Int63()%150) * time.Millisecond
+	rf.electionTime = t.Add(timeout)
 }
 
 // return currentTerm and whether this server
@@ -41,6 +86,9 @@ func (rf *Raft) GetState() (int, bool) {
 	var term int
 	var isleader bool
 	// Your code here (3A).
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
+	term, isleader = rf.currentTerm, rf.state == Leader
 	return term, isleader
 }
 
@@ -61,7 +109,6 @@ func (rf *Raft) persist() {
 	// raftstate := w.Bytes()
 	// rf.persister.Save(raftstate, nil)
 }
-
 
 // restore previously persisted state.
 func (rf *Raft) readPersist(data []byte) {
@@ -90,7 +137,6 @@ func (rf *Raft) PersistBytes() int {
 	return rf.persister.RaftStateSize()
 }
 
-
 // the service says it has created a snapshot that has
 // all info up to and including index. this means the
 // service no longer needs the log through (and including)
@@ -100,22 +146,144 @@ func (rf *Raft) Snapshot(index int, snapshot []byte) {
 
 }
 
+// 对于服务器的规则
+// 对于所有服务器
+// 1. 如果 commitIndex > lastApplied：增加 lastApplied，将 log[lastApplied] 应用于状态机
+// 2. 如果 RPC 请求或响应包含任期 T > currentTerm：设置 currentTerm = T，转换为 Follower
+
+// 对于 Followers
+// 1. 对 Candidate 和 Leader 的 RPC 作出回应
+// 2. 如果选举超时，没有收到现任 Leader 的 AppendEntries RPC，也没有给 Candidate 投票：转换为 Candidate
+
+// 对于 Candidates
+// 1. 在转换为 Candidate 时，开始选举
+//   1.1. 递增 currentTerm
+//   1.2. 重置选举定时器
+//   1.3. 向所有其他服务器发送 RequestVote RPCs
+// 2. 如果获得大多数服务器的投票：成为领导者
+// 3. 如果收到来自新领导的 AppendEntries RPC：转换为 Follower
+// 4. 如果选举超时：开始新的选举
+
+// 对于 Leaders
+// 1. 关于选举：向每个服务器发送初始的空 AppendEntries RPC（心跳）；在空闲见重复，以防止选举超时
+// 2. 如果收到来自客户端的命令：将条目追加到本地日志，在条目应用于状态机后作出响应
+// 3. 如果一个 Follower 的最后一个日志索引 >= nextIndex：发送 AppendEntries RPC 包含从 nextIndex 开始的日志条目
+//   3.1. 如果成功：为 Follower 更新 nextIndex 和 matchIndex
+//   3.2. 如果 AppendEntries 因为日志不一致而失败：递减 NextIndex 并重试
+// 4. 如果存在一个 N，使得 N > commitIndex，大多数的 matchIndex[i] >= N，并且 log[N].Term == currentTerm：设置 commitIndex = N
+
+type AppendEntriesArgs struct {
+	Term         int        // 领导任期
+	LeaderId     int        // 使 Candidate 可以为客户端重定向
+	PrevLogIndex int        // 紧接在新日志之前的日志条目的索引
+	PrevLogTerm  int        // 紧邻新日志条目之前的日志条目的任期
+	Entries      []LogEntry // 需要被保存的日志条目（做心跳使用时，内容为空；为了提高效率可一次性发送多个）
+	LeaderCommit int        // Leader 的已知已提交的最高的日志条目的索引
+}
+
+type AppendEntriesReply struct {
+	Term    int  // 当前任期，Leader 会更新自己的任期
+	Success bool // 如果 Follower 所含有的条目和 prevLogIndex 以及 prevLogTerm 匹配，则为真
+}
+
+// AppendEntries 由 Leader 调用以复制日志条目；也作为心跳使用
+// 注意：如果是 Leader 调用则说明 rf 为 Follower 或 Candidate，args 为 Leader 发送来的消息，reply 为回复的消息
+// 1. 如果 term < currentTerm，则返回 false
+// 2. 如果日志在 prevLogIndex 处不包含 term 与 prevLogTerm 匹配的条目，则返回 false
+// 3. 如果一个现有的条目与一个新的条目相冲突（相同的索引但不同的任期），删除现有的条目和后面所有的条目
+// 4. 添加日志中任何尚未出现的新条目
+// 5. 如果 leaderCommit > commitIndex，设置 commitIndex = min(leaderCommit, 最后一个新条目的索引)
+func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply) {
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
+
+	reply.Term = rf.currentTerm // 先将回复的 Term 设置为 rf 的 currentTerm
+
+	if args.Term < rf.currentTerm { // AppendEntries 1
+		reply.Success = false
+		return
+	} else if args.Term > rf.currentTerm { // 对于所有服务器 2
+		rf.state = Follower
+		rf.votedFor = -1
+		rf.currentTerm = args.Term
+		rf.resetElectionTimer()
+		reply.Success = true
+		return
+	} else { // Term 相同的情况，Follower 和 Candidate 的行动不相同
+		// 如果是 Follower，正常重置计时器回复 true 即可
+		if rf.state == Follower {
+			rf.resetElectionTimer()
+			reply.Success = true
+			return
+		} else { // 如果是 Candidate，则需要退出选举状态，成为普通 Follower
+			rf.state = Follower
+			rf.votedFor = -1
+			rf.currentTerm = args.Term
+			rf.resetElectionTimer()
+			reply.Success = true
+			return
+		}
+	}
+}
+
+func (rf *Raft) sendAppendEntries(server int, args *AppendEntriesArgs, reply *AppendEntriesReply) bool {
+	ok := rf.peers[server].Call("Raft.AppendEntries", args, reply)
+	return ok
+}
 
 // example RequestVote RPC arguments structure.
 // field names must start with capital letters!
 type RequestVoteArgs struct {
 	// Your data here (3A, 3B).
+	Term         int // 候选人的任期号
+	CandidateId  int // 请求选票的 Candidate Id
+	LastLogIndex int // Candidate 最后日志条目的索引
+	LastLogTerm  int // Candidate 最后日志条目的任期号
 }
 
 // example RequestVote RPC reply structure.
 // field names must start with capital letters!
 type RequestVoteReply struct {
 	// Your data here (3A).
+	Term        int  // 当前任期号，Candidate 会更新自己的任期号
+	VoteGranted bool // true 表示 Candidate 获得了选票
 }
 
-// example RequestVote RPC handler.
+// RequestVote Candidate 为收集选票而调用
+// 注意：这是 Candidate 发送给所有节点的信息，因此 rf 为被发送的节点
+// 1. 如果 term < currentTerm，则返回 false
+// 2. 如果 votedFor 是 null 或 candidateId，并且 Candidate 的日志至少与接收人的日志一样新，则投票
 func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	// Your code here (3A, 3B).
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
+
+	reply.Term = rf.currentTerm // 当前任期号
+
+	if args.Term < rf.currentTerm { // RequestVote 1
+		reply.VoteGranted = false
+		return
+	} else if args.Term > rf.currentTerm { // 对于所有服务器 2
+		rf.state = Follower
+		rf.currentTerm = args.Term
+		// 1. 如果之前是 Candidate 或 Leader，那么在身份转换后自然需要清空投票
+		// 2. 如果是 Follower，在到达新任期之后也需要清空投票
+		rf.votedFor = -1
+		// 如果是 Follower，它收到了一个来自更高任期 T+n 的投票请求。这说明有节点已经开始为 T+n 任期竞选了，因此需要放弃之前的计时器
+		rf.resetElectionTimer()
+	}
+
+	// RequestVote 2：用于判断是否投票
+	if rf.votedFor == -1 || rf.votedFor == args.CandidateId {
+		rf.votedFor = args.CandidateId
+		reply.VoteGranted = true
+		// 这里注意：如果投出了赞成票，意味着 Follower 愿意等 Candidate，所以需要重置计时器
+		rf.resetElectionTimer()
+		return
+	} else {
+		reply.VoteGranted = false
+		return
+	}
 }
 
 // example code to send a RequestVote RPC to a server.
@@ -150,7 +318,6 @@ func (rf *Raft) sendRequestVote(server int, args *RequestVoteArgs, reply *Reques
 	return ok
 }
 
-
 // the service using Raft (e.g. a k/v server) wants to start
 // agreement on the next command to be appended to Raft's log. if this
 // server isn't the leader, returns false. otherwise start the
@@ -169,7 +336,6 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	isLeader := true
 
 	// Your code here (3B).
-
 
 	return index, term, isLeader
 }
@@ -198,12 +364,103 @@ func (rf *Raft) ticker() {
 
 		// Your code here (3A)
 		// Check if a leader election should be started.
+		rf.mu.Lock()
 
+		// 如果是 Leader，就发送心跳消息或日志同步
+		if rf.state == Leader {
+			rf.sendBroadcast()
+		}
+
+		// 如果 Follower 或 Candidate 发现超时了
+		if (rf.state == Follower || rf.state == Candidate) && time.Now().After(rf.electionTime) {
+			rf.startElection()
+		}
+
+		rf.mu.Unlock()
 
 		// pause for a random amount of time between 50 and 350
 		// milliseconds.
 		ms := 50 + (rand.Int63() % 300)
 		time.Sleep(time.Duration(ms) * time.Millisecond)
+	}
+}
+
+// 发送心跳消息或进行日志同步
+func (rf *Raft) sendBroadcast() {
+	// 给每一个服务器发送
+	for server := range rf.peers {
+		// 遇到自己跳过
+		if server == rf.me {
+			continue
+		}
+		// 构建心跳信息
+		args := &AppendEntriesArgs{
+			Term:     rf.currentTerm,
+			LeaderId: rf.me,
+		}
+		// 进行非阻塞的 RPC 访问
+		go func(server int) {
+			reply := &AppendEntriesReply{}
+			if rf.sendAppendEntries(server, args, reply) {
+				// 只需检查返回的 Term 是否比自己大即可
+				rf.mu.Lock()
+				defer rf.mu.Unlock()
+
+				if reply.Term > rf.currentTerm {
+					rf.state = Follower
+					rf.votedFor = -1
+					rf.currentTerm = reply.Term
+					rf.resetElectionTimer()
+				}
+			}
+		}(server)
+	}
+}
+
+// 启动选举
+func (rf *Raft) startElection() {
+	// 对于 Candidates 1
+	// 要选举前先更新自己的信息
+	rf.state = Candidate
+	rf.currentTerm++
+	rf.votedFor = rf.me
+	rf.resetElectionTimer()
+	// 用于记录票数
+	votesCount := 1
+	// 构建 requestVote 信息
+	args := &RequestVoteArgs{
+		Term:        rf.currentTerm,
+		CandidateId: rf.me,
+	}
+	for server := range rf.peers {
+		if server == rf.me {
+			continue
+		}
+		go func(server int) {
+			reply := &RequestVoteReply{}
+			if rf.sendRequestVote(server, args, reply) {
+				rf.mu.Lock()
+				defer rf.mu.Unlock()
+
+				// 检查返回消息的任期号
+				if reply.Term > rf.currentTerm {
+					rf.state = Follower
+					rf.votedFor = -1
+					rf.currentTerm = reply.Term
+					rf.resetElectionTimer()
+					return
+				}
+
+				// 看是否给自己投票了
+				if reply.VoteGranted {
+					votesCount++
+					if votesCount > len(rf.peers)/2 {
+						rf.state = Leader
+						rf.sendBroadcast()
+					}
+				}
+			}
+		}(server)
 	}
 }
 
@@ -224,13 +481,17 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.me = me
 
 	// Your initialization code here (3A, 3B, 3C).
+	rf.currentTerm = 0
+	rf.votedFor = -1
+	rf.log = make([]LogEntry, 1)
+	rf.resetElectionTimer()
+	rf.applyCh = applyCh
 
 	// initialize from state persisted before a crash
 	rf.readPersist(persister.ReadRaftState())
 
 	// start ticker goroutine to start elections
 	go rf.ticker()
-
 
 	return rf
 }
