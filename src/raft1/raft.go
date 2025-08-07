@@ -406,11 +406,16 @@ func (rf *Raft) sendBroadcast() {
 				rf.mu.Lock()
 				defer rf.mu.Unlock()
 
-				if reply.Term > rf.currentTerm {
-					rf.state = Follower
-					rf.votedFor = -1
-					rf.currentTerm = reply.Term
-					rf.resetElectionTimer()
+				// 根据回复判断心跳消息发送结果
+				if reply.Success {
+				} else {
+					// 因为自身任期过低而被拒绝
+					if reply.Term > rf.currentTerm {
+						rf.state = Follower
+						rf.votedFor = -1
+						rf.currentTerm = reply.Term
+						rf.resetElectionTimer()
+					}
 				}
 			}
 		}(server)
