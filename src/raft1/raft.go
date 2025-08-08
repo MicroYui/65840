@@ -8,12 +8,15 @@ package raft
 
 import (
 	//	"bytes"
+	"bytes"
+	"log"
 	"math/rand"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	//	"6.5840/labgob"
+	"6.5840/labgob"
 	"6.5840/labrpc"
 	"6.5840/raftapi"
 	tester "6.5840/tester1"
@@ -39,7 +42,7 @@ type Raft struct {
 	// state a Raft server must maintain.
 
 	// 所有服务器上的持久性状态
-	// 在响应 RPC 之前，在稳定的存储上更新
+	// 在响应 RPC 之前，在稳定的存储上更新（换言之，任何可能改变这三个字段的操作都需要持久化）
 	currentTerm int        // 服务器看到的最新任期（首次启动时初始化为0，单调增加）
 	votedFor    int        // 当前任期内获得选票的 Candidate ID（如果没有则为空）
 	log         []LogEntry // 日志条目；每个条目包含状态机的命令，以及 Leader 收到条目的任期（第一个索引是1）
@@ -58,6 +61,7 @@ type Raft struct {
 	electionTime time.Time             // 用于记录当前服务器的选举超时时间
 	applyCh      chan raftapi.ApplyMsg // 用于向应用层提交信息
 	applyCond    *sync.Cond            // 用于通知向应用层提交信息
+	votesGranted int                   // 用于记录自身的票数（这样原子性更安全）
 }
 
 type RaftState int
@@ -112,12 +116,13 @@ func (rf *Raft) GetState() (int, bool) {
 func (rf *Raft) persist() {
 	// Your code here (3C).
 	// Example:
-	// w := new(bytes.Buffer)
-	// e := labgob.NewEncoder(w)
-	// e.Encode(rf.xxx)
-	// e.Encode(rf.yyy)
-	// raftstate := w.Bytes()
-	// rf.persister.Save(raftstate, nil)
+	w := new(bytes.Buffer)
+	e := labgob.NewEncoder(w)
+	e.Encode(rf.currentTerm)
+	e.Encode(rf.votedFor)
+	e.Encode(rf.log)
+	raftstate := w.Bytes()
+	rf.persister.Save(raftstate, nil)
 }
 
 // restore previously persisted state.
@@ -127,17 +132,20 @@ func (rf *Raft) readPersist(data []byte) {
 	}
 	// Your code here (3C).
 	// Example:
-	// r := bytes.NewBuffer(data)
-	// d := labgob.NewDecoder(r)
-	// var xxx
-	// var yyy
-	// if d.Decode(&xxx) != nil ||
-	//    d.Decode(&yyy) != nil {
-	//   error...
-	// } else {
-	//   rf.xxx = xxx
-	//   rf.yyy = yyy
-	// }
+	r := bytes.NewBuffer(data)
+	d := labgob.NewDecoder(r)
+	var currentTerm int
+	var votedFor int
+	var logs []LogEntry
+	if d.Decode(&currentTerm) != nil ||
+		d.Decode(&votedFor) != nil ||
+		d.Decode(&logs) != nil {
+		log.Fatal("failed to read persist\n")
+	} else {
+		rf.currentTerm = currentTerm
+		rf.votedFor = votedFor
+		rf.log = logs
+	}
 }
 
 // how many bytes in Raft's persisted log?
@@ -194,6 +202,12 @@ type AppendEntriesArgs struct {
 type AppendEntriesReply struct {
 	Term    int  // 当前任期，Leader 会更新自己的任期
 	Success bool // 如果 Follower 所含有的条目和 prevLogIndex 以及 prevLogTerm 匹配，则为真
+
+	// 实验提到在拒绝信息中增加内容，即在 AppendEntriesReply 中
+	Conflict bool // 用于标注是否有冲突
+	XTerm    int  // 冲突条目的 term（如果有的话）
+	Xindex   int  // 冲突 term 的第一个条目的 index（如果有的话）
+	Xlen     int  // 日志长度
 }
 
 // AppendEntries 由 Leader 调用以复制日志条目；也作为心跳使用
@@ -222,13 +236,16 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	if args.Term > rf.currentTerm {
 		rf.state = Follower
 		rf.currentTerm = args.Term
+		// 这里需要将投票置为 -1，因为在这一任期内，看到了更高的任期，意味着进入新的任期，之前的所有投票都作废了
+		rf.votedFor = -1
+		// 改变了 currentTerm 和 votedFor，需要持久化
+		rf.persist()
 	}
 
 	// 对于 Candidates 3
-	if rf.state == Candidate {
+	if rf.state == Candidate && rf.currentTerm == args.Term {
 		rf.state = Follower
-		rf.currentTerm = args.Term
-		rf.votedFor = -1
+		// 注意：这里不需要改变 voteFor，因为如果是 Candidate，其在这个任期已经将票投给了自己，如果变为 -1.意味着它又可以投票了
 	}
 
 	// 只要收到 AppendEntries 消息，都意味着需要重启计时器
@@ -239,31 +256,60 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	lastLogIndex, _ := rf.getLastIndexAndTerm()
 	// 首先 prevLogIndex > lastLogIndex，则少数据，直接返回 false
 	if lastLogIndex < args.PrevLogIndex {
+		// 少数据了，对应 Leader 的：Follower 的日志太短 -> nextIndex = XLen
+		reply.Conflict = true
+		// 给少数据的情况标识为 XTerm = -1
+		reply.XTerm = -1
+		reply.Xindex = -1
+		reply.Xlen = len(rf.log)
 		return
 	}
+
 	// 剩下表示索引可以定位，需要比较 term 是否匹配
 	if rf.log[args.PrevLogIndex].Term != args.PrevLogTerm {
+		xTerm := rf.log[args.PrevLogIndex].Term
+		for xIndex := args.PrevLogIndex; xIndex > 0; xIndex-- {
+			// 注意这里是 -1，因为先要找到不一样的，上一个才是 xterm 的第一个
+			if rf.log[xIndex-1].Term != xTerm {
+				reply.Xindex = xIndex
+				break
+			}
+		}
+		reply.XTerm = xTerm
+		reply.Xlen = len(rf.log)
 		return
 	}
 
-	// AppendEntries 3：如果一个现有的条目与一个新的条目相冲突（相同的索引但不同的任期），删除现有的条目和后面所有的条目
-	// 经过上面，剩下的只剩数据相同或接收人数据更多，无论怎样都需要进行数据截断
-	rf.log = rf.log[:args.PrevLogIndex+1]
+	// 找到第一个不匹配的条目
+	firstMismatch := -1
+	for i := 0; i < len(args.Entries); i++ {
+		index := args.PrevLogIndex + 1 + i
+		if index > lastLogIndex || rf.log[index].Term != args.Entries[i].Term {
+			firstMismatch = i
+			break
+		}
+	}
 
-	// AppendEntries 4：添加日志中任何尚未出现的新条目
-	rf.log = append(rf.log, args.Entries...)
-
-	// 只要能发送 AppendEntries 的 term >= me，并且能走到最后一步，将回复设置为 true
-	reply.Success = true
+	// 如果有不匹配的条目，或者有新条目需要追加
+	if firstMismatch != -1 {
+		// AppendEntries 3：如果一个现有的条目与一个新的条目相冲突（相同的索引但不同的任期），删除现有的条目和后面所有的条目
+		rf.log = rf.log[:args.PrevLogIndex+1+firstMismatch]
+		// AppendEntries 4：添加日志中任何尚未出现的新条目
+		rf.log = append(rf.log, args.Entries[firstMismatch:]...)
+		// 改变了 log，需要持久化
+		rf.persist()
+	}
 
 	// AppendEntries 5：如果 leaderCommit > commitIndex，设置 commitIndex = min(leaderCommit, 最后一个新条目的索引)
 	if args.LeaderCommit > rf.commitIndex {
-		// 最后一个新条目的索引是 prevLogIndex 加上新条目的数量
-		lastNewEntryIndex := args.PrevLogIndex + len(args.Entries)
-		rf.commitIndex = min(args.LeaderCommit, lastNewEntryIndex)
+		lastLogIndex, _ = rf.getLastIndexAndTerm()
+		rf.commitIndex = min(args.LeaderCommit, lastLogIndex)
 		// 当 follower 的 commitIndex 更新后，需要唤醒 applier goroutine 来应用日志
 		rf.applyCond.Broadcast()
 	}
+
+	// 只要能发送 AppendEntries 的 term >= me，并且能走到最后一步，将回复设置为 true
+	reply.Success = true
 
 }
 
@@ -328,6 +374,8 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 		rf.votedFor = -1
 		// 如果是 Follower，它收到了一个来自更高任期 T+n 的投票请求。这说明有节点已经开始为 T+n 任期竞选了，因此需要放弃之前的计时器
 		rf.resetElectionTimer()
+		// 改变了 currentTerm 和 votedFor，需要持久化
+		rf.persist()
 	}
 
 	// RequestVote 2：用于判断是否投票
@@ -342,6 +390,8 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 		reply.VoteGranted = true
 		// 这里注意：如果投出了赞成票，意味着 Follower 愿意等 Candidate，所以需要重置计时器
 		rf.resetElectionTimer()
+		// 改变了 votedFor，需要持久化
+		rf.persist()
 		return
 	} else {
 		reply.VoteGranted = false
@@ -417,6 +467,8 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 		Command: command,
 	}
 	rf.log = append(rf.log, newEntry)
+	// 改变了 log，需要持久化
+	rf.persist()
 	rf.sendBroadcast()
 	index, term = rf.getLastIndexAndTerm()
 
@@ -474,6 +526,7 @@ func (rf *Raft) ticker() {
 // 如果 Follower 的日志于 Leader 的不一致，在下一个 AppendEntries RPC 中，AppendEntries 一致性检查将失败
 // 在拒绝之后，Leader 会递减 nextIndex 并重试 AppendEntries RPC
 func (rf *Raft) sendBroadcast() {
+	leaderTerm := rf.currentTerm
 	// 给每一个服务器发送
 	for server := range rf.peers {
 		// 遇到自己跳过
@@ -496,7 +549,7 @@ func (rf *Raft) sendBroadcast() {
 
 			// 构建心跳信息
 			args := &AppendEntriesArgs{
-				Term:         rf.currentTerm,
+				Term:         leaderTerm,
 				LeaderId:     rf.me,
 				PrevLogIndex: prevLogIndex,
 				PrevLogTerm:  prevLogTerm,
@@ -510,6 +563,11 @@ func (rf *Raft) sendBroadcast() {
 				// 只需检查返回的 Term 是否比自己大即可
 				rf.mu.Lock()
 				defer rf.mu.Unlock()
+
+				// 处理回复前，再次检查自己是否还是当初那个 Leader
+				if rf.state != Leader || rf.currentTerm != leaderTerm {
+					return
+				}
 
 				// 根据回复判断心跳消息发送结果
 				if reply.Success {
@@ -528,9 +586,32 @@ func (rf *Raft) sendBroadcast() {
 						rf.votedFor = -1
 						rf.currentTerm = reply.Term
 						rf.resetElectionTimer()
+						// 改变了 currentTerm 和 votedFor，需要持久化
+						rf.persist()
 					} else { // 数据没有匹配上，需要递减 nextIndex 并重试，Leaders rule 3.2
-						if rf.nextIndex[server] > 1 {
-							rf.nextIndex[server]--
+						// if rf.nextIndex[server] > 1 {
+						// 	rf.nextIndex[server]--
+						// }
+						// Follower 的日志太短
+						if reply.XTerm == -1 {
+							rf.nextIndex[server] = reply.Xlen
+						} else {
+							// 检查有无 xTerm
+							lastLogIndex, _ = rf.getLastIndexAndTerm()
+							haveXTerm := false
+							lastIndexOfTerm := -1
+							for index := lastLogIndex; index > 0; index-- {
+								if rf.log[index].Term == reply.XTerm {
+									haveXTerm = true
+									lastIndexOfTerm = index
+									break
+								}
+							}
+							if haveXTerm {
+								rf.nextIndex[server] = lastIndexOfTerm + 1
+							} else {
+								rf.nextIndex[server] = reply.Xindex
+							}
 						}
 					}
 				}
@@ -568,8 +649,11 @@ func (rf *Raft) startElection() {
 	rf.currentTerm++
 	rf.votedFor = rf.me
 	rf.resetElectionTimer()
+	// 改变了 currentTerm 和 votedFor，需要持久化
+	rf.persist()
+	electionTerm := rf.currentTerm
 	// 用于记录票数，这里修改为地址更合适
-	votesCount := 1
+	rf.votesGranted = 1
 	// 构建 requestVote 信息
 	lastLogIndex, lastLogTerm := rf.getLastIndexAndTerm()
 	args := &RequestVoteArgs{
@@ -588,19 +672,26 @@ func (rf *Raft) startElection() {
 				rf.mu.Lock()
 				defer rf.mu.Unlock()
 
+				// 在协程期间，有可能状态发生改变，需要先检查
+				if rf.state != Candidate || rf.currentTerm != electionTerm {
+					return
+				}
+
 				// 检查返回消息的任期号
 				if reply.Term > rf.currentTerm {
 					rf.state = Follower
 					rf.votedFor = -1
 					rf.currentTerm = reply.Term
 					rf.resetElectionTimer()
+					// 改变了 currentTerm 和 votedFor，需要持久化
+					rf.persist()
 					return
 				}
 
 				// 看是否给自己投票了
 				if reply.VoteGranted {
-					votesCount++
-					if votesCount > len(rf.peers)/2 {
+					rf.votesGranted++
+					if rf.votesGranted > len(rf.peers)/2 {
 						rf.state = Leader
 
 						// 如果当选了 Leader，需要先初始化 nextIndex 和 matchIndex
