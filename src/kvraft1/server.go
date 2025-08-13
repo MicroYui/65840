@@ -1,6 +1,8 @@
 package kvraft
 
 import (
+	"bytes"
+	"log"
 	"sync"
 	"sync/atomic"
 
@@ -102,11 +104,47 @@ func (kv *KVServer) DoOp(req any) any {
 
 func (kv *KVServer) Snapshot() []byte {
 	// Your code here
-	return nil
+	kv.mu.Lock()
+	defer kv.mu.Unlock()
+
+	w := new(bytes.Buffer)
+	e := labgob.NewEncoder(w)
+
+	if e.Encode(kv.db) != nil ||
+		e.Encode(kv.processedReqs) != nil ||
+		e.Encode(kv.cachedReplies) != nil {
+		log.Fatalf("KVServer %d: failed to encode state for snapshot", kv.me)
+	}
+
+	return w.Bytes()
 }
 
 func (kv *KVServer) Restore(data []byte) {
 	// Your code here
+	if data == nil || len(data) < 1 {
+		return
+	}
+
+	r := bytes.NewBuffer(data)
+	d := labgob.NewDecoder(r)
+
+	var db map[string]ValueWithVersion
+	var processedReqs map[int64]int
+	var cachedReplies map[int64]any
+
+	if d.Decode(&db) != nil ||
+		d.Decode(&processedReqs) != nil ||
+		d.Decode(&cachedReplies) != nil {
+		log.Fatalf("KVServer %d: failed to restore from snapshot", kv.me)
+		return
+	}
+
+	kv.mu.Lock()
+	defer kv.mu.Unlock()
+
+	kv.db = db
+	kv.processedReqs = processedReqs
+	kv.cachedReplies = cachedReplies
 }
 
 func (kv *KVServer) Get(args *rpc.GetArgs, reply *rpc.GetReply) {
@@ -172,6 +210,8 @@ func StartKVServer(servers []*labrpc.ClientEnd, gid tester.Tgid, me int, persist
 	labgob.Register(rsm.Op{})
 	labgob.Register(rpc.PutArgs{})
 	labgob.Register(rpc.GetArgs{})
+	labgob.Register(rpc.GetReply{})
+	labgob.Register(rpc.PutReply{})
 
 	kv := &KVServer{me: me}
 	kv.db = make(map[string]ValueWithVersion)

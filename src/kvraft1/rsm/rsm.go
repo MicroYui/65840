@@ -88,6 +88,11 @@ func MakeRSM(servers []*labrpc.ClientEnd, me int, persister *tester.Persister, m
 		sm:           sm,
 		waitChs:      make(map[int]chan Op),
 	}
+	// 从持久化存储中读取并恢复快照
+	snapshot := persister.ReadSnapshot()
+	if len(snapshot) > 0 {
+		rsm.sm.Restore(snapshot)
+	}
 	if !useRaftStateMachine {
 		rsm.rf = raft.Make(servers, me, persister, rsm.applyCh)
 	}
@@ -174,6 +179,19 @@ func (rsm *RSM) reader() {
 				DPrintf("RSM %d: Reader found NO channel for index %d. Op (Id: %d) might have timed out.", rsm.me, index, op.Id)
 			}
 			rsm.mu.Unlock()
+
+			// 检查是否需要生成快照
+			// 1. maxraftstate != -1
+			// 2. 当前存储的数据长度已经超过 maxraftstate
+			if rsm.maxraftstate != -1 && rsm.rf.PersistBytes() >= rsm.maxraftstate {
+				DPrintf("RSM %d: Raft state size %d >= maxraftstate %d. Creating snapshot.", rsm.me, rsm.rf.PersistBytes(), rsm.maxraftstate)
+				snapshotData := rsm.sm.Snapshot()
+				rsm.rf.Snapshot(index, snapshotData)
+			}
+		} else if !msg.CommandValid && msg.SnapshotValid { // Leader 发送来 installSnapshot
+			// 直接读取发送来的快照即可
+			rsm.sm.Restore(msg.Snapshot)
+			DPrintf("RSM %d: State machine restored from snapshot.", rsm.me)
 		}
 	}
 }
