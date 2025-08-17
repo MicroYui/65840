@@ -69,11 +69,19 @@ func (ck *Clerk) Get(key string) (string, rpc.Tversion, rpc.Err) {
 			grp_ck := shardgrp.MakeClerk(ck.clnt, servers)
 			// 使用内层客户端发送真正的 Get 请求
 			val, ver, err := grp_ck.Get(key)
+
+			if err == rpc.ErrWrongGroup {
+				// 如果是 WrongGroup，说明配置过时了，继续循环以获取新配置
+				DPrintf("[OuterClerk] Get Key '%s': GID %d reported ErrWrongGroup. Retrying.", key, gid)
+				time.Sleep(500 * time.Millisecond) // 在配置变更期间，短暂等待
+				continue
+			}
+
 			DPrintf("[OuterClerk] Get Key '%s': GID %d returned Err: %s. Finished.", key, gid, err)
 			return val, ver, err
 		}
 		DPrintf("[OuterClerk] Get Key '%s': GID %d not found in config groups. Retrying.", key, gid)
-		time.Sleep(100 * time.Millisecond)
+		// time.Sleep(20 * time.Millisecond)
 	}
 }
 
@@ -91,10 +99,15 @@ func (ck *Clerk) Put(key string, value string, version rpc.Tversion) rpc.Err {
 		if servers, ok := config.Groups[gid]; ok {
 			grp_ck := shardgrp.MakeClerk(ck.clnt, servers)
 			err := grp_ck.Put(key, value, version)
+			if err == rpc.ErrWrongGroup {
+				DPrintf("[OuterClerk] Put Key '%s': GID %d reported ErrWrongGroup. Retrying.", key, gid)
+				time.Sleep(500 * time.Millisecond)
+				continue
+			}
 			DPrintf("[OuterClerk] Put Key '%s': GID %d returned Err: %s. Finished.", key, gid, err)
 			return err
 		}
 		DPrintf("[OuterClerk] Put Key '%s': GID %d not found in config groups. Retrying.", key, gid)
-		time.Sleep(100 * time.Millisecond)
+		// time.Sleep(20 * time.Millisecond)
 	}
 }

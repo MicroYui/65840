@@ -6,7 +6,6 @@ package shardctrler
 
 import (
 	"log"
-	"time"
 
 	kvsrv "6.5840/kvsrv1"
 	"6.5840/kvsrv1/rpc"
@@ -98,54 +97,47 @@ func (sck *ShardCtrler) ChangeConfigTo(new *shardcfg.ShardConfig) {
 	for shard, move := range shardsToMove {
 		DPrintf("Moving shard %d from GID %d to GID %d for config %d", shard, move.From, move.To, new.Num)
 
-		// 获取源和目标组的服务器列表
-		srcServers, src_ok := new.Groups[move.From]
+		// 源分组的服务器列表应该从 current 配置中获取
+		srcServers := current.Groups[move.From]
+		// 目标分组的服务器列表从 new 配置中获取
 		destServers, dest_ok := new.Groups[move.To]
 
-		if !src_ok || !dest_ok {
-			log.Fatalf("Cannot find servers for GID %d or %d", move.From, move.To)
+		if !dest_ok && move.To != 0 {
+			log.Fatalf("Cannot find servers for destination GID %d", move.To)
 		}
 
 		// 为源和目标组创建内层客户端
 		srcClerk := shardgrp.MakeClerk(sck.clnt, srcServers)
 		destClerk := shardgrp.MakeClerk(sck.clnt, destServers)
 
-		var state []byte
-		DPrintf("[Ctrler] Step 1: Freezing Shard %d at GID %d", shard, move.From)
-		// 冻结源分片，并获取其数据
-		for {
-			var freezeErr rpc.Err
-			state, freezeErr = srcClerk.FreezeShard(shard, new.Num)
-			if freezeErr == rpc.OK {
-				DPrintf("[Ctrler] -> Freeze success for Shard %d", shard)
-				break // 冻结成功
+		if move.To != 0 {
+			var state []byte
+			DPrintf("[Ctrler] Step 1: Freezing Shard %d at GID %d", shard, move.From)
+			// 这里不需要 for，因为实际执行时还会一直循环访问
+			state, freezeErr := srcClerk.FreezeShard(shard, new.Num)
+			if freezeErr != rpc.OK {
+				DPrintf("[Ctrler] FreezeShard for %d failed with err: %s. Aborting config change.", shard, freezeErr)
+				return
 			}
-			DPrintf("[Ctrler] -> Freeze for Shard %d failed with %s, retrying...", shard, freezeErr)
-			time.Sleep(100 * time.Millisecond)
-		}
+			DPrintf("[Ctrler] -> Freeze success for Shard %d", shard)
 
-		// 在目标组安装分片数据
-		DPrintf("[Ctrler] Step 2: Installing Shard %d at GID %d", shard, move.To)
-		for {
+			// 在目标组安装分片数据
+			DPrintf("[Ctrler] Step 2: Installing Shard %d at GID %d", shard, move.To)
 			installErr := destClerk.InstallShard(shard, state, new.Num)
-			if installErr == rpc.OK {
-				DPrintf("[Ctrler] -> Install success for Shard %d", shard)
-				break // 安装成功
+			if installErr != rpc.OK {
+				DPrintf("[Ctrler] InstallShard for %d failed with err: %s. Aborting config change.", shard, installErr)
+				return
 			}
-			DPrintf("[Ctrler] -> Install for Shard %d failed with %s, retrying...", shard, installErr)
-			time.Sleep(100 * time.Millisecond)
-		}
+			DPrintf("[Ctrler] -> Install success for Shard %d", shard)
 
-		// 从源组删除分片数据
-		DPrintf("[Ctrler] Step 3: Deleting Shard %d from GID %d", shard, move.From)
-		for {
+			// 从源组删除分片数据
+			DPrintf("[Ctrler] Step 3: Deleting Shard %d from GID %d", shard, move.From)
 			deleteErr := srcClerk.DeleteShard(shard, new.Num)
-			if deleteErr == rpc.OK {
-				DPrintf("[Ctrler] -> Delete success for Shard %d", shard)
-				break // 删除成功
+			if deleteErr != rpc.OK {
+				DPrintf("[Ctrler] DeleteShard for %d failed with err: %s. Aborting config change.", shard, deleteErr)
+				return
 			}
-			DPrintf("[Ctrler] -> Delete for Shard %d failed with %s, retrying...", shard, deleteErr)
-			time.Sleep(100 * time.Millisecond)
+			DPrintf("[Ctrler] -> Delete success for Shard %d", shard)
 		}
 	}
 	DPrintf("[Ctrler] All shards moved. Updating config in KV store to Num %d", new.Num)

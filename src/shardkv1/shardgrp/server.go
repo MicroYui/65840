@@ -59,6 +59,11 @@ func (kv *KVServer) DoOp(req any) any {
 
 	switch args := req.(type) {
 	case rpc.GetArgs:
+		shardID := shardcfg.Key2Shard(args.Key)
+		if kv.isWrongGroup(shardID) || kv.shardStates[shardID] == Frozen {
+			// 如果分片不存在，或状态不是 Serving，则拒绝操作
+			return rpc.GetReply{Err: rpc.ErrWrongGroup}
+		}
 		DPrintf("[GID %d Srv %d] DoOp: Processing Get for Key '%s'", kv.gid, kv.me, args.Key)
 		// 检查重复请求
 		if lastSeqNum, ok := kv.processedReqs[args.ClerkId]; ok && args.SeqNum <= lastSeqNum {
@@ -66,7 +71,7 @@ func (kv *KVServer) DoOp(req any) any {
 			return kv.cachedReplies[args.ClerkId]
 		}
 		// 需要先计算分片 id
-		shardID := shardcfg.Key2Shard(args.Key)
+		// shardID := shardcfg.Key2Shard(args.Key)
 		shardData := kv.shardsDB[shardID]
 		value, ok := shardData[args.Key]
 		var reply rpc.GetReply
@@ -86,6 +91,10 @@ func (kv *KVServer) DoOp(req any) any {
 		return reply
 
 	case rpc.PutArgs:
+		shardID := shardcfg.Key2Shard(args.Key)
+		if kv.isWrongGroup(shardID) || kv.shardStates[shardID] == Frozen {
+			return rpc.PutReply{Err: rpc.ErrWrongGroup}
+		}
 		DPrintf("[GID %d Srv %d] DoOp: Processing Put for Key '%s'", kv.gid, kv.me, args.Key)
 		// 检查重复请求
 		if lastSeqNum, ok := kv.processedReqs[args.ClerkId]; ok && args.SeqNum <= lastSeqNum {
@@ -94,7 +103,7 @@ func (kv *KVServer) DoOp(req any) any {
 		}
 
 		// 需要先计算分片 id
-		shardID := shardcfg.Key2Shard(args.Key)
+		// shardID := shardcfg.Key2Shard(args.Key)
 		shardData := kv.shardsDB[shardID]
 		value, ok := shardData[args.Key]
 		var reply rpc.PutReply
@@ -131,7 +140,7 @@ func (kv *KVServer) DoOp(req any) any {
 	case shardrpc.FreezeShardArgs:
 		DPrintf("[GID %d Srv %d] DoOp: Processing FreezeShard for Shard %d (Num %d). Current Num: %d", kv.gid, kv.me, args.Shard, args.Num, kv.shardNums[args.Shard])
 		var reply shardrpc.FreezeShardReply
-		if args.Num > kv.shardNums[args.Shard] {
+		if args.Num >= kv.shardNums[args.Shard] {
 			kv.shardStates[args.Shard] = Frozen
 			kv.shardNums[args.Shard] = args.Num
 			w := new(bytes.Buffer)
@@ -140,6 +149,8 @@ func (kv *KVServer) DoOp(req any) any {
 			reply.State = w.Bytes()
 			reply.Err = rpc.OK
 			DPrintf("[GID %d Srv %d] DoOp: Froze Shard %d for Num %d -> OK", kv.gid, kv.me, args.Shard, args.Num)
+		} else {
+			reply.Err = rpc.ErrMaybe
 		}
 		reply.Num = kv.shardNums[args.Shard]
 		return reply
@@ -159,6 +170,8 @@ func (kv *KVServer) DoOp(req any) any {
 			} else {
 				log.Fatal("install shard decode error")
 			}
+		} else {
+			reply.Err = rpc.ErrMaybe
 		}
 		return reply
 	case shardrpc.DeleteShardArgs:
@@ -170,6 +183,8 @@ func (kv *KVServer) DoOp(req any) any {
 			delete(kv.shardNums, args.Shard)
 			reply.Err = rpc.OK
 			DPrintf("[GID %d Srv %d] DoOp: Deleted Shard %d for Num %d -> OK", kv.gid, kv.me, args.Shard, args.Num)
+		} else {
+			reply.Err = rpc.ErrMaybe
 		}
 		return reply
 	}
@@ -220,7 +235,7 @@ func (kv *KVServer) Get(args *rpc.GetArgs, reply *rpc.GetReply) {
 	kv.mu.Lock()
 	DPrintf("[GID %d Srv %d] RPC: Received Get for Key '%s'", kv.gid, kv.me, args.Key)
 	shardId := shardcfg.Key2Shard(args.Key)
-	if kv.isWrongGroup(shardId) {
+	if kv.isWrongGroup(shardId) || kv.shardStates[shardId] == Frozen {
 		reply.Err = rpc.ErrWrongGroup
 		DPrintf("[GID %d Srv %d] RPC Get: Key '%s' (Shard %d) -> ErrWrongGroup", kv.gid, kv.me, args.Key, shardId)
 		kv.mu.Unlock()
@@ -343,6 +358,7 @@ func (kv *KVServer) DeleteShard(args *shardrpc.DeleteShardArgs, reply *shardrpc.
 func (kv *KVServer) Kill() {
 	atomic.StoreInt32(&kv.dead, 1)
 	// Your code here, if desired.
+	kv.rsm.Raft().Kill()
 }
 
 func (kv *KVServer) killed() bool {

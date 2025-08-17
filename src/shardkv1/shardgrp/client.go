@@ -64,6 +64,15 @@ func (ck *Clerk) Get(key string) (string, rpc.Tversion, rpc.Err) {
 		DPrintf("[GrpClerk %d] Get Key '%s': Trying server %d", ck.clerkId, key, server)
 		var reply rpc.GetReply
 		ok := ck.clnt.Call(ck.servers[server], "KVServer.Get", &args, &reply)
+
+		DPrintf("[GrpClerk %d] Get Key '%s': Call to server %d returned, ok=%v, err=%s", ck.clerkId, key, server, ok, reply.Err)
+
+		if !ok || reply.Err == rpc.ErrWrongLeader || reply.Err == rpc.ErrMaybe {
+			server = (server + 1) % len(ck.servers)
+			time.Sleep(20 * time.Millisecond)
+			continue
+		}
+
 		if ok {
 			DPrintf("[GrpClerk %d] Get Key '%s': Server %d replied with Err: %s", ck.clerkId, key, server, reply.Err)
 			if reply.Err == rpc.ErrWrongGroup {
@@ -83,8 +92,8 @@ func (ck *Clerk) Get(key string) (string, rpc.Tversion, rpc.Err) {
 				return "", 0, rpc.ErrNoKey
 			}
 		}
-		server = (server + 1) % len(ck.servers)
-		time.Sleep(100 * time.Millisecond)
+		// server = (server + 1) % len(ck.servers)
+		// time.Sleep(20 * time.Millisecond)
 	}
 }
 
@@ -111,9 +120,11 @@ func (ck *Clerk) Put(key string, value string, version rpc.Tversion) rpc.Err {
 		var reply rpc.PutReply
 		ok := ck.clnt.Call(ck.servers[server], "KVServer.Put", &args, &reply)
 
+		DPrintf("[GrpClerk %d] Put Key '%s': Call to server %d returned, ok=%v, err=%s", ck.clerkId, key, server, ok, reply.Err)
+
 		if !ok || reply.Err == rpc.ErrWrongLeader || reply.Err == rpc.ErrMaybe {
 			server = (server + 1) % len(ck.servers)
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(20 * time.Millisecond)
 			continue
 		}
 
@@ -155,7 +166,7 @@ func (ck *Clerk) FreezeShard(s shardcfg.Tshid, num shardcfg.Tnum) ([]byte, rpc.E
 
 		if !ok || reply.Err == rpc.ErrWrongLeader {
 			server = (server + 1) % len(ck.servers)
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(20 * time.Millisecond)
 			continue
 		}
 
@@ -186,7 +197,7 @@ func (ck *Clerk) InstallShard(s shardcfg.Tshid, state []byte, num shardcfg.Tnum)
 
 		if !ok || reply.Err == rpc.ErrWrongLeader {
 			server = (server + 1) % len(ck.servers)
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(20 * time.Millisecond)
 			continue
 		}
 
@@ -213,6 +224,12 @@ func (ck *Clerk) DeleteShard(s shardcfg.Tshid, num shardcfg.Tnum) rpc.Err {
 		DPrintf("[GrpClerk %d] DeleteShard %d: Trying server %d", ck.clerkId, s, server)
 		var reply shardrpc.DeleteShardReply
 		ok := ck.clnt.Call(ck.servers[server], "KVServer.DeleteShard", &args, &reply)
+
+		if !ok || reply.Err == rpc.ErrWrongLeader {
+			server = (server + 1) % len(ck.servers)
+			time.Sleep(20 * time.Millisecond)
+			continue
+		}
 
 		if ok {
 			DPrintf("[GrpClerk %d] DeleteShard %d: Server %d replied with Err: %s", ck.clerkId, s, server, reply.Err)
