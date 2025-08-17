@@ -62,7 +62,8 @@ type RSM struct {
 	maxraftstate int // snapshot if log grows this big
 	sm           StateMachine
 	// Your definitions here.
-	waitChs map[int]chan Op // submit 用于接收 reader 的信息
+	waitChs        map[int]chan Op // submit 用于接收 reader 的信息
+	isSnapshotting bool
 }
 
 // servers[] contains the ports of the set of
@@ -145,7 +146,7 @@ func (rsm *RSM) Submit(req any) (rpc.Err, any) {
 		}
 		DPrintf("RSM %d: Op Match at index %d. Returning OK.", rsm.me, index)
 		return rpc.OK, result.Result
-	case <-time.After(2000 * time.Millisecond):
+	case <-time.After(500 * time.Millisecond):
 		DPrintf("RSM %d: Timed out waiting for Op (%d) at index %d.", rsm.me, id, index)
 		return rpc.ErrMaybe, nil
 	}
@@ -180,13 +181,25 @@ func (rsm *RSM) reader() {
 			}
 			rsm.mu.Unlock()
 
-			// 检查是否需要生成快照
-			// 1. maxraftstate != -1
-			// 2. 当前存储的数据长度已经超过 maxraftstate
-			if rsm.maxraftstate != -1 && rsm.rf.PersistBytes() >= rsm.maxraftstate {
-				DPrintf("RSM %d: Raft state size %d >= maxraftstate %d. Creating snapshot.", rsm.me, rsm.rf.PersistBytes(), rsm.maxraftstate)
-				snapshotData := rsm.sm.Snapshot()
-				rsm.rf.Snapshot(index, snapshotData)
+			// 检查是否需要快照
+			rsm.mu.Lock()
+			needSnapshot := rsm.maxraftstate != -1 && rsm.rf.PersistBytes() >= rsm.maxraftstate && !rsm.isSnapshotting
+			if needSnapshot {
+				rsm.isSnapshotting = true
+			}
+			rsm.mu.Unlock()
+
+			// 提升性能：开一个新的协程进行快照操作，否则太浪费时间
+			if needSnapshot {
+				go func(applyIndex int) {
+					snapshotData := rsm.sm.Snapshot()
+					rsm.rf.Snapshot(applyIndex, snapshotData)
+
+					// 快照完成后，重置标志位
+					rsm.mu.Lock()
+					rsm.isSnapshotting = false
+					rsm.mu.Unlock()
+				}(index)
 			}
 		} else if !msg.CommandValid && msg.SnapshotValid { // Leader 发送来 installSnapshot
 			// 直接读取发送来的快照即可

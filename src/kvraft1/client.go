@@ -63,6 +63,13 @@ func (ck *Clerk) Get(key string) (string, rpc.Tversion, rpc.Err) {
 	for {
 		var reply rpc.GetReply
 		ok := ck.clnt.Call(ck.servers[server], "KVServer.Get", &args, &reply)
+
+		if !ok || reply.Err == rpc.ErrWrongLeader || reply.Err == rpc.ErrMaybe {
+			server = (server + 1) % len(ck.servers)
+			time.Sleep(20 * time.Millisecond)
+			continue
+		}
+
 		if ok {
 			if reply.Err == rpc.OK {
 				ck.mu.Lock()
@@ -78,8 +85,8 @@ func (ck *Clerk) Get(key string) (string, rpc.Tversion, rpc.Err) {
 				return "", 0, rpc.ErrNoKey
 			}
 		}
-		server = (server + 1) % len(ck.servers)
-		time.Sleep(100 * time.Millisecond)
+		// server = (server + 1) % len(ck.servers)
+		// time.Sleep(100 * time.Millisecond)
 	}
 }
 
@@ -123,7 +130,7 @@ func (ck *Clerk) Put(key string, value string, version rpc.Tversion) rpc.Err {
 
 		if !ok || reply.Err == rpc.ErrWrongLeader || reply.Err == rpc.ErrMaybe {
 			server = (server + 1) % len(ck.servers)
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(20 * time.Millisecond)
 			continue
 		}
 
