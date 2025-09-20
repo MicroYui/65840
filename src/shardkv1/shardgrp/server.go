@@ -47,9 +47,12 @@ type KVServer struct {
 
 func (kv *KVServer) isWrongGroup(shardID shardcfg.Tshid) bool {
 	// 查找此分片在其对应位置是否有状态
-	_, ok := kv.shardStates[shardID]
-	DPrintf("[GID %d Srv %d] Checking shard %d ownership: %v", kv.gid, kv.me, shardID, ok)
-	return !ok
+	_, stateOk := kv.shardStates[shardID]
+	_, dbOk := kv.shardsDB[shardID]
+
+	isWrong := !stateOk || !dbOk
+	DPrintf("[GID %d Srv %d] Checking shard %d ownership: stateOk=%v, dbOk=%v, isWrong=%v", kv.gid, kv.me, shardID, stateOk, dbOk, isWrong)
+	return isWrong
 }
 
 func (kv *KVServer) DoOp(req any) any {
@@ -67,8 +70,11 @@ func (kv *KVServer) DoOp(req any) any {
 		DPrintf("[GID %d Srv %d] DoOp: Processing Get for Key '%s'", kv.gid, kv.me, args.Key)
 		// 检查重复请求
 		if lastSeqNum, ok := kv.processedReqs[args.ClerkId]; ok && args.SeqNum <= lastSeqNum {
-			DPrintf("[GID %d Srv %d] DoOp: Duplicate Get from Clerk %d (Seq %d <= %d)", kv.gid, kv.me, args.ClerkId, args.SeqNum, lastSeqNum)
-			return kv.cachedReplies[args.ClerkId]
+			if args.SeqNum == lastSeqNum {
+				DPrintf("[GID %d Srv %d] DoOp: Duplicate Get from Clerk %d (Seq %d <= %d)", kv.gid, kv.me, args.ClerkId, args.SeqNum, lastSeqNum)
+				return kv.cachedReplies[args.ClerkId]
+			}
+			return rpc.GetReply{Err: rpc.OK}
 		}
 		// 需要先计算分片 id
 		// shardID := shardcfg.Key2Shard(args.Key)
@@ -86,8 +92,9 @@ func (kv *KVServer) DoOp(req any) any {
 		}
 
 		// 更新去重信息和缓存
-		kv.processedReqs[args.ClerkId] = args.SeqNum
-		kv.cachedReplies[args.ClerkId] = reply
+		// Get 操作并不会影响到缓存，所以不需要更新信息
+		// kv.processedReqs[args.ClerkId] = args.SeqNum
+		// kv.cachedReplies[args.ClerkId] = reply
 		return reply
 
 	case rpc.PutArgs:
@@ -98,8 +105,11 @@ func (kv *KVServer) DoOp(req any) any {
 		DPrintf("[GID %d Srv %d] DoOp: Processing Put for Key '%s'", kv.gid, kv.me, args.Key)
 		// 检查重复请求
 		if lastSeqNum, ok := kv.processedReqs[args.ClerkId]; ok && args.SeqNum <= lastSeqNum {
-			DPrintf("[GID %d Srv %d] DoOp: Duplicate Put from Clerk %d (Seq %d <= %d)", kv.gid, kv.me, args.ClerkId, args.SeqNum, lastSeqNum)
-			return kv.cachedReplies[args.ClerkId]
+			if args.SeqNum == lastSeqNum {
+				DPrintf("[GID %d Srv %d] DoOp: Duplicate Put from Clerk %d (Seq %d <= %d)", kv.gid, kv.me, args.ClerkId, args.SeqNum, lastSeqNum)
+				return kv.cachedReplies[args.ClerkId]
+			}
+			return rpc.PutReply{Err: rpc.OK}
 		}
 
 		// 需要先计算分片 id
@@ -116,7 +126,7 @@ func (kv *KVServer) DoOp(req any) any {
 				reply.Err = rpc.OK
 				DPrintf("[GID %d Srv %d] DoOp: Put for new Key '%s' -> OK", kv.gid, kv.me, args.Key)
 			} else {
-				reply.Err = rpc.ErrMaybe
+				reply.Err = rpc.ErrNoKey
 				DPrintf("[GID %d Srv %d] DoOp: Put for new Key '%s' with Version %d -> ErrMaybe", kv.gid, kv.me, args.Key, args.Version)
 			}
 		} else {
@@ -200,7 +210,9 @@ func (kv *KVServer) Snapshot() []byte {
 	e := labgob.NewEncoder(w)
 	if e.Encode(kv.shardsDB) != nil ||
 		e.Encode(kv.shardStates) != nil ||
-		e.Encode(kv.shardNums) != nil {
+		e.Encode(kv.shardNums) != nil ||
+		e.Encode(kv.processedReqs) != nil ||
+		e.Encode(kv.cachedReplies) != nil {
 		log.Fatalf("KVServer %d: failed to encode state for snapshot", kv.me)
 	}
 	return w.Bytes()
@@ -216,9 +228,13 @@ func (kv *KVServer) Restore(data []byte) {
 	var shardsDB map[shardcfg.Tshid]map[string]ValueWithVersion
 	var shardStates map[shardcfg.Tshid]ShardStatus
 	var shardNums map[shardcfg.Tshid]shardcfg.Tnum
+	var processedReqs map[int64]int
+	var cachedReplies map[int64]any
 	if d.Decode(&shardsDB) != nil ||
 		d.Decode(&shardStates) != nil ||
-		d.Decode(&shardNums) != nil {
+		d.Decode(&shardNums) != nil ||
+		d.Decode(&processedReqs) != nil ||
+		d.Decode(&cachedReplies) != nil {
 		log.Fatalf("KVServer %d: failed to restore from snapshot", kv.me)
 		return
 	}
@@ -227,6 +243,8 @@ func (kv *KVServer) Restore(data []byte) {
 	kv.shardsDB = shardsDB
 	kv.shardStates = shardStates
 	kv.shardNums = shardNums
+	kv.processedReqs = processedReqs
+	kv.cachedReplies = cachedReplies
 }
 
 func (kv *KVServer) Get(args *rpc.GetArgs, reply *rpc.GetReply) {
@@ -242,6 +260,11 @@ func (kv *KVServer) Get(args *rpc.GetArgs, reply *rpc.GetReply) {
 		return
 	}
 	kv.mu.Unlock()
+
+	if _, isLeader := kv.rsm.Raft().GetState(); !isLeader {
+		reply.Err = rpc.ErrWrongLeader
+		return
+	}
 
 	DPrintf("[GID %d Srv %d] RPC Get: Submitting Get for Key '%s' to RSM", kv.gid, kv.me, args.Key)
 	err, result := kv.rsm.Submit(*args)
@@ -273,6 +296,11 @@ func (kv *KVServer) Put(args *rpc.PutArgs, reply *rpc.PutReply) {
 		return
 	}
 	kv.mu.Unlock()
+
+	if _, isLeader := kv.rsm.Raft().GetState(); !isLeader {
+		reply.Err = rpc.ErrWrongLeader
+		return
+	}
 
 	DPrintf("[GID %d Srv %d] RPC Put: Submitting Put for Key '%s' to RSM", kv.gid, kv.me, args.Key)
 	err, result := kv.rsm.Submit(*args)
