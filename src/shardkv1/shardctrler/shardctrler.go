@@ -25,6 +25,7 @@ func DPrintf(format string, a ...interface{}) (n int, err error) {
 }
 
 const ConfigKey = "config"
+const ConfigKeyNext = "config_next"
 
 // ShardCtrler for the controller and kv clerk.
 type ShardCtrler struct {
@@ -49,6 +50,43 @@ func MakeShardCtrler(clnt *tester.Clnt) *ShardCtrler {
 // controller. In part A, this method doesn't need to do anything. In
 // B and C, this method implements recovery.
 func (sck *ShardCtrler) InitController() {
+	DPrintf("[Ctrler] InitController: Checking for incomplete configuration change...")
+	valNext, verNext, errNext := sck.IKVClerk.Get(ConfigKeyNext)
+
+	if errNext == rpc.ErrNoKey || valNext == "" {
+		DPrintf("[Ctrler] InitController: No 'next' config found. Nothing to recover.")
+		return
+	}
+
+	valCurrent, verCurrent, _ := sck.IKVClerk.Get(ConfigKey)
+	current := shardcfg.FromString(valCurrent)
+	next := shardcfg.FromString(valNext)
+
+	// 只有当 "next" 配置确实比 "current" 配置新的时候，才执行恢复逻辑。
+	if next.Num > current.Num {
+		DPrintf("[Ctrler] InitController: Found incomplete change from Num %d to Num %d. Resuming...", current.Num, next.Num)
+		success := sck.performFreezeAndInstall(current, next)
+
+		if success {
+			DPrintf("[Ctrler] InitController: Recovery moves complete. Finalizing config update.")
+			updateErr := sck.IKVClerk.Put(ConfigKey, next.String(), verCurrent)
+			if updateErr == rpc.OK {
+				_, finalVerNext, _ := sck.IKVClerk.Get(ConfigKeyNext)
+				sck.IKVClerk.Put(ConfigKeyNext, "", finalVerNext)
+				DPrintf("[Ctrler] InitController: Recovery successful. Config is now Num %d.", next.Num)
+				go sck.performDeletes(current, next)
+			} else {
+				DPrintf("[Ctrler] InitController: FATAL! Failed to finalize recovered config update. Error: %s", updateErr)
+			}
+		} else {
+			DPrintf("[Ctrler] InitController: Recovery moves failed. Aborting finalization. Will retry on next controller start.")
+		}
+	} else {
+		// 如果 next.Num <= current.Num，说明之前的变更已经完成，只是清理工作没做完。
+		// 我们只需要把过时的 "next" 配置删除即可。
+		DPrintf("[Ctrler] InitController: 'next' config (Num %d) is not newer than 'current' (Num %d). Cleaning up stale 'next' config.", next.Num, current.Num)
+		sck.IKVClerk.Put(ConfigKeyNext, "", verNext)
+	}
 }
 
 // Called once by the tester to supply the first configuration.  You
@@ -62,22 +100,7 @@ func (sck *ShardCtrler) InitConfig(cfg *shardcfg.ShardConfig) {
 	sck.IKVClerk.Put(ConfigKey, configString, 0)
 }
 
-// Called by the tester to ask the controller to change the
-// configuration from the current one to new.  While the controller
-// changes the configuration it may be superseded by another
-// controller.
-func (sck *ShardCtrler) ChangeConfigTo(new *shardcfg.ShardConfig) {
-	// Your code here.
-	DPrintf("[Ctrler] Starting ChangeConfigTo Num %d", new.Num)
-	// 获取当前配置
-	val, ver, _ := sck.IKVClerk.Get(ConfigKey)
-	current := shardcfg.FromString(val)
-	DPrintf("[Ctrler] Current config is Num %d", current.Num)
-	// 检查 num
-	if current.Num >= new.Num {
-		DPrintf("[Ctrler] New config Num %d is not newer than current %d. Aborting.", new.Num, current.Num)
-		return
-	}
+func (sck *ShardCtrler) performMoves(current *shardcfg.ShardConfig, new *shardcfg.ShardConfig) bool {
 	// 获取需要移动的分片
 	shardsToMove := make(map[shardcfg.Tshid]struct {
 		From tester.Tgid
@@ -85,7 +108,7 @@ func (sck *ShardCtrler) ChangeConfigTo(new *shardcfg.ShardConfig) {
 	})
 	for i, gid := range current.Shards {
 		// 注意 Tgid 是从 1 开始算的，0 代表未分配给任何一个 group
-		if gid != 0 && gid != new.Shards[i] {
+		if gid != new.Shards[i] {
 			shardsToMove[shardcfg.Tshid(i)] = struct {
 				From tester.Tgid
 				To   tester.Tgid
@@ -117,7 +140,7 @@ func (sck *ShardCtrler) ChangeConfigTo(new *shardcfg.ShardConfig) {
 			state, freezeErr := srcClerk.FreezeShard(shard, new.Num)
 			if freezeErr != rpc.OK {
 				DPrintf("[Ctrler] FreezeShard for %d failed with err: %s. Aborting config change.", shard, freezeErr)
-				return
+				return false
 			}
 			DPrintf("[Ctrler] -> Freeze success for Shard %d", shard)
 
@@ -126,7 +149,7 @@ func (sck *ShardCtrler) ChangeConfigTo(new *shardcfg.ShardConfig) {
 			installErr := destClerk.InstallShard(shard, state, new.Num)
 			if installErr != rpc.OK {
 				DPrintf("[Ctrler] InstallShard for %d failed with err: %s. Aborting config change.", shard, installErr)
-				return
+				return false
 			}
 			DPrintf("[Ctrler] -> Install success for Shard %d", shard)
 
@@ -135,18 +158,121 @@ func (sck *ShardCtrler) ChangeConfigTo(new *shardcfg.ShardConfig) {
 			deleteErr := srcClerk.DeleteShard(shard, new.Num)
 			if deleteErr != rpc.OK {
 				DPrintf("[Ctrler] DeleteShard for %d failed with err: %s. Aborting config change.", shard, deleteErr)
-				return
+				return false
 			}
 			DPrintf("[Ctrler] -> Delete success for Shard %d", shard)
 		}
+
 	}
-	DPrintf("[Ctrler] All shards moved. Updating config in KV store to Num %d", new.Num)
-	updateErr := sck.IKVClerk.Put(ConfigKey, new.String(), ver)
-	if updateErr == rpc.OK {
-		DPrintf("[Ctrler] Config updated successfully.")
-		return // 更新完毕
+	return true
+}
+
+// performFreezeAndInstall 只执行数据复制
+func (sck *ShardCtrler) performFreezeAndInstall(current *shardcfg.ShardConfig, new *shardcfg.ShardConfig) bool {
+	shardsToMove := make(map[shardcfg.Tshid]struct {
+		From tester.Tgid
+		To   tester.Tgid
+	})
+	for i, gid := range current.Shards {
+		if gid != new.Shards[i] && gid != 0 { // 只处理有源组的移动
+			shardsToMove[shardcfg.Tshid(i)] = struct {
+				From tester.Tgid
+				To   tester.Tgid
+			}{gid, new.Shards[i]}
+		}
 	}
-	DPrintf("[Ctrler] Failed to update config! Error: %s", updateErr)
+
+	for shard, move := range shardsToMove {
+		// ... (和原来一样的逻辑来创建 srcClerk 和 destClerk)
+		srcServers := current.Groups[move.From]
+		destServers, dest_ok := new.Groups[move.To]
+		if !dest_ok && move.To != 0 {
+			log.Fatalf("Cannot find servers for destination GID %d", move.To)
+		}
+		srcClerk := shardgrp.MakeClerk(sck.clnt, srcServers)
+		destClerk := shardgrp.MakeClerk(sck.clnt, destServers)
+
+		if move.To != 0 {
+			state, freezeErr := srcClerk.FreezeShard(shard, new.Num)
+			if freezeErr != rpc.OK {
+				DPrintf("[Ctrler] FreezeShard for %d failed. Aborting.", shard)
+				return false
+			}
+
+			installErr := destClerk.InstallShard(shard, state, new.Num)
+			if installErr != rpc.OK {
+				DPrintf("[Ctrler] InstallShard for %d failed. Aborting.", shard)
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// performDeletes 只执行删除操作，作为清理
+func (sck *ShardCtrler) performDeletes(current *shardcfg.ShardConfig, new *shardcfg.ShardConfig) {
+	// ... (和上面类似逻辑计算 shardsToMove) ...
+	shardsToMove := make(map[shardcfg.Tshid]struct {
+		From tester.Tgid
+		To   tester.Tgid
+	})
+	for i, gid := range current.Shards {
+		if gid != new.Shards[i] && gid != 0 {
+			shardsToMove[shardcfg.Tshid(i)] = struct {
+				From tester.Tgid
+				To   tester.Tgid
+			}{gid, new.Shards[i]}
+		}
+	}
+
+	for shard, move := range shardsToMove {
+		srcServers := current.Groups[move.From]
+		srcClerk := shardgrp.MakeClerk(sck.clnt, srcServers)
+
+		// 删除操作是尽力而为，即使失败也不应阻塞
+		srcClerk.DeleteShard(shard, new.Num)
+	}
+}
+
+// Called by the tester to ask the controller to change the
+// configuration from the current one to new.  While the controller
+// changes the configuration it may be superseded by another
+// controller.
+func (sck *ShardCtrler) ChangeConfigTo(new *shardcfg.ShardConfig) {
+	// Your code here.
+	DPrintf("[Ctrler] Starting ChangeConfigTo Num %d", new.Num)
+	// 获取当前配置
+	val, ver, _ := sck.IKVClerk.Get(ConfigKey)
+	current := shardcfg.FromString(val)
+	DPrintf("[Ctrler] Current config is Num %d", current.Num)
+	// 检查 num
+	if current.Num >= new.Num {
+		DPrintf("[Ctrler] New config Num %d is not newer than current %d. Aborting.", new.Num, current.Num)
+		return
+	}
+
+	_, verNext, _ := sck.IKVClerk.Get(ConfigKeyNext)
+	sck.IKVClerk.Put(ConfigKeyNext, new.String(), verNext)
+	DPrintf("[Ctrler] Wrote 'next' config (Num %d) to KV store.", new.Num)
+
+	success := sck.performFreezeAndInstall(current, new)
+
+	if success {
+		DPrintf("[Ctrler] Freeze/Install complete. Updating config to Num %d", new.Num)
+		// 阶段二: 提交
+		updateErr := sck.IKVClerk.Put(ConfigKey, new.String(), ver)
+		if updateErr == rpc.OK {
+			_, finalVerNext, _ := sck.IKVClerk.Get(ConfigKeyNext)
+			sck.IKVClerk.Put(ConfigKeyNext, "", finalVerNext)
+			DPrintf("[Ctrler] Config updated successfully.")
+
+			// 阶段三: 清理
+			go sck.performDeletes(current, new) // 可以异步执行清理
+			return
+		}
+	} else {
+		DPrintf("[Ctrler] Moves failed. Aborting finalization. Will retry on next controller start.")
+	}
 }
 
 // Return the current configuration
