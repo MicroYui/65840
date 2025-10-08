@@ -7,13 +7,14 @@ package raft
 // Make() creates a new raft peer that implements the raft interface.
 
 import (
-	//	"bytes"
+	"bytes"
 	"math/rand"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	//	"6.5840/labgob"
+	"6.5840/labgob"
 	"6.5840/labrpc"
 	"6.5840/raftapi"
 	tester "6.5840/tester1"
@@ -98,14 +99,18 @@ func (rf *Raft) GetState() (int, bool) {
 // after you've implemented snapshots, pass the current snapshot
 // (or nil if there's not yet a snapshot).
 func (rf *Raft) persist() {
-	// Your code here (3C).
-	// Example:
-	// w := new(bytes.Buffer)
-	// e := labgob.NewEncoder(w)
-	// e.Encode(rf.xxx)
-	// e.Encode(rf.yyy)
-	// raftstate := w.Bytes()
-	// rf.persister.Save(raftstate, nil)
+	var buffer bytes.Buffer
+	encoder := labgob.NewEncoder(&buffer)
+	if err := encoder.Encode(rf.currentTerm); err != nil {
+		return
+	}
+	if err := encoder.Encode(rf.votedFor); err != nil {
+		return
+	}
+	if err := encoder.Encode(rf.log); err != nil {
+		return
+	}
+	rf.persister.Save(buffer.Bytes(), nil)
 }
 
 // restore previously persisted state.
@@ -113,19 +118,34 @@ func (rf *Raft) readPersist(data []byte) {
 	if data == nil || len(data) < 1 { // bootstrap without any state?
 		return
 	}
-	// Your code here (3C).
-	// Example:
-	// r := bytes.NewBuffer(data)
-	// d := labgob.NewDecoder(r)
-	// var xxx
-	// var yyy
-	// if d.Decode(&xxx) != nil ||
-	//    d.Decode(&yyy) != nil {
-	//   error...
-	// } else {
-	//   rf.xxx = xxx
-	//   rf.yyy = yyy
-	// }
+	r := bytes.NewBuffer(data)
+	d := labgob.NewDecoder(r)
+
+	var currentTerm int
+	var votedFor int
+	var logEntries []LogEntry
+
+	if d.Decode(&currentTerm) != nil ||
+		d.Decode(&votedFor) != nil ||
+		d.Decode(&logEntries) != nil {
+		return
+	}
+
+	rf.currentTerm = currentTerm
+	rf.votedFor = votedFor
+	if len(logEntries) == 0 {
+		rf.log = []LogEntry{{Term: 0}}
+	} else {
+		rf.log = logEntries
+	}
+
+	lastIdx := rf.lastLogIndex()
+	if rf.commitIndex > lastIdx {
+		rf.commitIndex = lastIdx
+	}
+	if rf.lastApplied > rf.commitIndex {
+		rf.lastApplied = rf.commitIndex
+	}
 }
 
 // how many bytes in Raft's persisted log?
@@ -186,6 +206,7 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 
 	if rf.votedFor == -1 || rf.votedFor == args.CandidateId {
 		rf.votedFor = args.CandidateId
+		rf.persist()
 		reply.VoteGranted = true
 		rf.resetElectionLocked()
 		DPrintf("[R%d] vote granted to %d for term=%d (candidate lastIdx=%d lastTerm=%d myLastIdx=%d myLastTerm=%d)", rf.me, args.CandidateId, args.Term, args.LastLogIndex, args.LastLogTerm, rf.lastLogIndex(), rf.lastLogTerm())
@@ -238,6 +259,9 @@ type AppendEntriesArgs struct {
 type AppendEntriesReply struct {
 	Term    int
 	Success bool
+	XTerm   int
+	XIndex  int
+	XLen    int
 }
 
 // AppendEntries handles heartbeats and (later) log replication from leaders.
@@ -247,6 +271,9 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 
 	reply.Success = false
 	reply.Term = rf.currentTerm
+	reply.XTerm = -1
+	reply.XIndex = -1
+	reply.XLen = len(rf.log)
 
 	if args.Term < rf.currentTerm {
 		return
@@ -257,30 +284,51 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	}
 
 	rf.state = stateFollower
-	rf.votedFor = args.LeaderId
+	persistNeeded := false
+	if rf.votedFor != args.LeaderId {
+		rf.votedFor = args.LeaderId
+		persistNeeded = true
+	}
 	rf.resetElectionLocked()
 
 	if args.PrevLogIndex > rf.lastLogIndex() {
+		if persistNeeded {
+			rf.persist()
+		}
+		reply.XTerm = -1
+		reply.XIndex = -1
 		return
 	}
 
 	if args.PrevLogIndex >= 0 && rf.termAt(args.PrevLogIndex) != args.PrevLogTerm {
+		if persistNeeded {
+			rf.persist()
+		}
+		conflictTerm := rf.termAt(args.PrevLogIndex)
+		reply.XTerm = conflictTerm
+		reply.XIndex = rf.firstIndexOfTerm(conflictTerm)
 		return
 	}
 
 	newIndex := args.PrevLogIndex + 1
+	logUpdated := false
 	for i, entry := range args.Entries {
 		if newIndex <= rf.lastLogIndex() {
 			if rf.termAt(newIndex) != entry.Term {
 				rf.truncateLog(newIndex - 1)
 				rf.log = append(rf.log, args.Entries[i:]...)
+				logUpdated = true
 				break
 			}
 		} else {
 			rf.log = append(rf.log, args.Entries[i:]...)
+			logUpdated = true
 			break
 		}
 		newIndex++
+	}
+	if logUpdated {
+		persistNeeded = true
 	}
 
 	if args.LeaderCommit > rf.commitIndex {
@@ -288,8 +336,14 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 		rf.applyCond.Broadcast()
 	}
 
+	if persistNeeded {
+		rf.persist()
+	}
+
 	reply.Term = rf.currentTerm
 	reply.Success = true
+	reply.XTerm = -1
+	reply.XIndex = -1
 
 	DPrintf("[R%d] AppendEntries from L%d term=%d prevIdx=%d entries=%d success", rf.me, args.LeaderId, args.Term, args.PrevLogIndex, len(args.Entries))
 }
@@ -326,6 +380,8 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	}
 	rf.log = append(rf.log, entry)
 	index := rf.lastLogIndex()
+
+	rf.persist()
 
 	rf.matchIndex[rf.me] = index
 	rf.nextIndex[rf.me] = index + 1
@@ -448,6 +504,24 @@ func (rf *Raft) termAt(index int) int {
 	return rf.log[index].Term
 }
 
+func (rf *Raft) firstIndexOfTerm(term int) int {
+	for i := 0; i < len(rf.log); i++ {
+		if rf.log[i].Term == term {
+			return i
+		}
+	}
+	return -1
+}
+
+func (rf *Raft) lastIndexOfTerm(term int) int {
+	for i := len(rf.log) - 1; i >= 0; i-- {
+		if rf.log[i].Term == term {
+			return i
+		}
+	}
+	return -1
+}
+
 func (rf *Raft) truncateLog(index int) {
 	if index+1 < len(rf.log) {
 		rf.log = rf.log[:index+1]
@@ -482,6 +556,7 @@ func (rf *Raft) becomeFollowerLocked(term int) {
 	rf.currentTerm = term
 	rf.votedFor = -1
 	rf.resetElectionLocked()
+	rf.persist()
 }
 
 func (rf *Raft) becomeLeaderLocked() {
@@ -495,6 +570,7 @@ func (rf *Raft) becomeLeaderLocked() {
 		rf.matchIndex[i] = 0
 	}
 	rf.matchIndex[rf.me] = lastIndex
+	rf.persist()
 }
 
 func (rf *Raft) startElection() {
@@ -508,6 +584,7 @@ func (rf *Raft) startElection() {
 	rf.currentTerm++
 	termStarted := rf.currentTerm
 	rf.votedFor = rf.me
+	rf.persist()
 	lastLogIndex := rf.lastLogIndex()
 	lastLogTerm := rf.lastLogTerm()
 	rf.resetElectionLocked()
@@ -626,12 +703,20 @@ func (rf *Raft) replicateToPeer(server int, term int) {
 			return
 		}
 
-		if rf.nextIndex[server] > 1 {
-			rf.nextIndex[server]--
+		if reply.XTerm == -1 {
+			rf.nextIndex[server] = reply.XLen
 		} else {
+			lastIdx := rf.lastIndexOfTerm(reply.XTerm)
+			if lastIdx >= 0 {
+				rf.nextIndex[server] = lastIdx + 1
+			} else {
+				rf.nextIndex[server] = reply.XIndex
+			}
+		}
+		if rf.nextIndex[server] < 1 {
 			rf.nextIndex[server] = 1
 		}
-		DPrintf("[R%d] replicate to %d failed, decrement nextIndex to %d", rf.me, server, rf.nextIndex[server])
+		DPrintf("[R%d] replicate to %d failed, adjust nextIndex to %d (XTerm=%d XIndex=%d XLen=%d)", rf.me, server, rf.nextIndex[server], reply.XTerm, reply.XIndex, reply.XLen)
 		rf.mu.Unlock()
 	}
 }
