@@ -59,6 +59,7 @@ type RSM struct {
 	waiters      map[int]*pending
 	ready        map[int]submitResult
 	lastApplied  int
+	lastSnapshot int
 	nextId       uint64
 	doneCh       chan struct{}
 	stopOnce     sync.Once
@@ -91,6 +92,11 @@ func MakeRSM(servers []*labrpc.ClientEnd, me int, persister *tester.Persister, m
 	}
 	if !useRaftStateMachine {
 		rsm.rf = raft.Make(servers, me, persister, rsm.applyCh)
+	}
+	if persister != nil {
+		if data := persister.ReadSnapshot(); len(data) > 0 {
+			sm.Restore(data)
+		}
 	}
 	go rsm.applyLoop()
 	return rsm
@@ -191,11 +197,15 @@ func (rsm *RSM) applyLoop() {
 
 			reply := rsm.sm.DoOp(op.Req)
 			rsm.finishApply(msg.CommandIndex, op, reply, rpc.OK)
+			rsm.maybeSnapshot(msg.CommandIndex)
 		} else if msg.SnapshotValid {
 			rsm.sm.Restore(msg.Snapshot)
 			rsm.mu.Lock()
 			if msg.SnapshotIndex > rsm.lastApplied {
 				rsm.lastApplied = msg.SnapshotIndex
+			}
+			if msg.SnapshotIndex > rsm.lastSnapshot {
+				rsm.lastSnapshot = msg.SnapshotIndex
 			}
 			// Drop waiters for commands older than the snapshot.
 			for idx, waiter := range rsm.waiters {
@@ -242,6 +252,27 @@ func (rsm *RSM) finishApply(index int, op Op, reply any, err rpc.Err) {
 	if op.Me == rsm.me {
 		rsm.ready[index] = submitResult{op: op, reply: reply, err: err}
 	}
+}
+
+func (rsm *RSM) maybeSnapshot(index int) {
+	if rsm.maxraftstate < 0 {
+		return
+	}
+	if rsm.rf.PersistBytes() < rsm.maxraftstate {
+		return
+	}
+	snapshot := rsm.sm.Snapshot()
+	if len(snapshot) == 0 {
+		return
+	}
+	rsm.mu.Lock()
+	if index <= rsm.lastSnapshot {
+		rsm.mu.Unlock()
+		return
+	}
+	rsm.lastSnapshot = index
+	rsm.mu.Unlock()
+	rsm.rf.Snapshot(index, snapshot)
 }
 
 func (rsm *RSM) shutdownWaiters() {
