@@ -2,24 +2,40 @@ package rsm
 
 import (
 	"sync"
+	"sync/atomic"
+	"time"
 
 	"6.5840/kvsrv1/rpc"
 	"6.5840/labrpc"
-	"6.5840/raft1"
+	raft "6.5840/raft1"
 	"6.5840/raftapi"
-	"6.5840/tester1"
-
+	tester "6.5840/tester1"
 )
 
 var useRaftStateMachine bool // to plug in another raft besided raft1
 
-
 type Op struct {
-	// Your definitions here.
-	// Field names must start with capital letters,
-	// otherwise RPC will break.
+	// Me identifies which server submitted the Op. Tests and Submit use this to
+	// match locally originated entries once they commit.
+	Me int
+	// Id is a per-server unique identifier that lets us disambiguate Ops
+	// originating from the same server.
+	Id uint64
+	// Req carries the state machine specific request (e.g., Inc, Null).
+	Req any
 }
 
+type submitResult struct {
+	op    Op
+	reply any
+	err   rpc.Err
+}
+
+type pending struct {
+	op   Op
+	term int
+	ch   chan submitResult
+}
 
 // A server (i.e., ../server.go) that wants to replicate itself calls
 // MakeRSM and must implement the StateMachine interface.  This
@@ -40,7 +56,12 @@ type RSM struct {
 	applyCh      chan raftapi.ApplyMsg
 	maxraftstate int // snapshot if log grows this big
 	sm           StateMachine
-	// Your definitions here.
+	waiters      map[int]*pending
+	ready        map[int]submitResult
+	lastApplied  int
+	nextId       uint64
+	doneCh       chan struct{}
+	stopOnce     sync.Once
 }
 
 // servers[] contains the ports of the set of
@@ -64,17 +85,20 @@ func MakeRSM(servers []*labrpc.ClientEnd, me int, persister *tester.Persister, m
 		maxraftstate: maxraftstate,
 		applyCh:      make(chan raftapi.ApplyMsg),
 		sm:           sm,
+		waiters:      make(map[int]*pending),
+		ready:        make(map[int]submitResult),
+		doneCh:       make(chan struct{}),
 	}
 	if !useRaftStateMachine {
 		rsm.rf = raft.Make(servers, me, persister, rsm.applyCh)
 	}
+	go rsm.applyLoop()
 	return rsm
 }
 
 func (rsm *RSM) Raft() raftapi.Raft {
 	return rsm.rf
 }
-
 
 // Submit a command to Raft, and wait for it to be committed.  It
 // should return ErrWrongLeader if client should find new leader and
@@ -85,6 +109,154 @@ func (rsm *RSM) Submit(req any) (rpc.Err, any) {
 	// for example: op := Op{Me: rsm.me, Id: id, Req: req}, where req
 	// is the argument to Submit and id is a unique id for the op.
 
-	// your code here
-	return rpc.ErrWrongLeader, nil // i'm dead, try another server.
+	op := Op{
+		Me:  rsm.me,
+		Id:  atomic.AddUint64(&rsm.nextId, 1),
+		Req: req,
+	}
+
+	index, term, isLeader := rsm.rf.Start(op)
+	if !isLeader {
+		return rpc.ErrWrongLeader, nil
+	}
+
+	ch := make(chan submitResult, 1)
+
+	rsm.mu.Lock()
+	// Replace any stale waiter occupying this index (should not happen, but be defensive).
+	if old, ok := rsm.waiters[index]; ok {
+		delete(rsm.waiters, index)
+		// Wake stale waiter so it can exit.
+		old.ch <- submitResult{err: rpc.ErrWrongLeader}
+	}
+	rsm.waiters[index] = &pending{
+		op:   op,
+		term: term,
+		ch:   ch,
+	}
+
+	if res, ok := rsm.ready[index]; ok {
+		delete(rsm.waiters, index)
+		delete(rsm.ready, index)
+		rsm.mu.Unlock()
+		if res.op.Id == op.Id {
+			return res.err, res.reply
+		}
+		return rpc.ErrWrongLeader, nil
+	}
+	doneCh := rsm.doneCh
+	ticker := time.NewTicker(50 * time.Millisecond)
+	defer ticker.Stop()
+	rsm.mu.Unlock()
+
+	for {
+		select {
+		case res := <-ch:
+			if res.err != rpc.OK {
+				return res.err, nil
+			}
+			return res.err, res.reply
+		case <-doneCh:
+			rsm.mu.Lock()
+			if cur, ok := rsm.waiters[index]; ok && cur.op.Id == op.Id {
+				delete(rsm.waiters, index)
+			}
+			rsm.mu.Unlock()
+			return rpc.ErrWrongLeader, nil
+		case <-ticker.C:
+			if curTerm, isLeader := rsm.rf.GetState(); !isLeader || curTerm > term {
+				rsm.mu.Lock()
+				if cur, ok := rsm.waiters[index]; ok && cur.op.Id == op.Id {
+					delete(rsm.waiters, index)
+				}
+				rsm.mu.Unlock()
+				return rpc.ErrWrongLeader, nil
+			}
+		}
+	}
+}
+
+func (rsm *RSM) applyLoop() {
+	defer rsm.shutdownWaiters()
+	for msg := range rsm.applyCh {
+		if msg.CommandValid {
+			op, ok := msg.Command.(Op)
+			if !ok {
+				continue
+			}
+
+			if !rsm.shouldApply(msg.CommandIndex) {
+				continue
+			}
+
+			reply := rsm.sm.DoOp(op.Req)
+			rsm.finishApply(msg.CommandIndex, op, reply, rpc.OK)
+		} else if msg.SnapshotValid {
+			rsm.sm.Restore(msg.Snapshot)
+			rsm.mu.Lock()
+			if msg.SnapshotIndex > rsm.lastApplied {
+				rsm.lastApplied = msg.SnapshotIndex
+			}
+			// Drop waiters for commands older than the snapshot.
+			for idx, waiter := range rsm.waiters {
+				if idx <= msg.SnapshotIndex {
+					delete(rsm.waiters, idx)
+					waiter.ch <- submitResult{err: rpc.ErrWrongLeader}
+				}
+			}
+			for idx := range rsm.ready {
+				if idx <= msg.SnapshotIndex {
+					delete(rsm.ready, idx)
+				}
+			}
+			rsm.mu.Unlock()
+		}
+	}
+}
+
+func (rsm *RSM) shouldApply(index int) bool {
+	rsm.mu.Lock()
+	defer rsm.mu.Unlock()
+	if index <= rsm.lastApplied {
+		return false
+	}
+	rsm.lastApplied = index
+	return true
+}
+
+func (rsm *RSM) finishApply(index int, op Op, reply any, err rpc.Err) {
+	rsm.mu.Lock()
+	defer rsm.mu.Unlock()
+
+	if waiter, ok := rsm.waiters[index]; ok {
+		delete(rsm.waiters, index)
+		if waiter.op.Id == op.Id {
+			waiter.ch <- submitResult{op: op, reply: reply, err: err}
+		} else {
+			waiter.ch <- submitResult{op: op, err: rpc.ErrWrongLeader}
+		}
+		return
+	}
+
+	// Store result for the originating leader in case apply precedes waiter registration.
+	if op.Me == rsm.me {
+		rsm.ready[index] = submitResult{op: op, reply: reply, err: err}
+	}
+}
+
+func (rsm *RSM) shutdownWaiters() {
+	rsm.stopOnce.Do(func() { close(rsm.doneCh) })
+
+	rsm.mu.Lock()
+	waiters := make([]*pending, 0, len(rsm.waiters))
+	for idx, waiter := range rsm.waiters {
+		waiters = append(waiters, waiter)
+		delete(rsm.waiters, idx)
+	}
+	rsm.ready = make(map[int]submitResult)
+	rsm.mu.Unlock()
+
+	for _, waiter := range waiters {
+		waiter.ch <- submitResult{err: rpc.ErrWrongLeader}
+	}
 }
