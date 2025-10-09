@@ -1,0 +1,1277 @@
+<!DOCTYPE html>
+<!-- saved from url=(0054)https://pdos.csail.mit.edu/6.824/labs/lab-kvraft1.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<link rel="stylesheet" href="./6.5840 Lab 4_ Fault-tolerant Key_Value Service_files/style.css" type="text/css">
+<script src="./6.5840 Lab 4_ Fault-tolerant Key_Value Service_files/guidance.js.&#19979;&#36733;"></script>  
+<title>6.5840 Lab 4: Fault-tolerant Key/Value Service</title>
+<style id="sweezy-cursors--styles">
+      body a,
+      body button,
+      body [type='button'],
+      body input[type='reset'],
+      body input[type='submit'],
+      body [role="button"],
+      ::-webkit-search-cancel-button,
+      ::-webkit-search-decoration,
+      ::-webkit-scrollbar-button, 
+      ::-webkit-file-upload-button,
+      body .sweezy-custom-cursor-hover,
+      body button.sweezy-custom-cursor-hover,
+      body a.sweezy-custom-cursor-hover {
+        cursor: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAABVFJREFUWEe9l3tsFFUUxr9zZ2bbbgvFtExpWnZ3QgEjGghEQlATjEWp0ShY4h8WkRj/JNQYIdHEKGh8RB4JGu2GIBoiREQRISomysM14iOIPLQFO9N0+8BdGuhj233MXLk7s9tl3W2lmp1ksjt7793zu9/57rl3CHkuj8ezkjH2EhHNANAG4Dld1z/P13+iv1OugV6vdzkj9kk1LCzmCRwjGSGQZZpmQ2dn55GJBss1LieApmknK7i18BgG4WaEfolwV9yNftA3hmHcUwiA3nokqvzSCCBR8l4VLcJ3Jms3DEOk5H+78ilwaSlLqC2uKMBsgKaIC4FEIQEkU20piQESbIABBYFYIQEUU20pi6dT0HRFRmCECpiCIlNtKU8AMkuq0BSSEBguJECxpbZUmqMK9DAEIiigAm6utlRZgOyYMAgEBgoJUMbVlhpuKyATmnQg0M8Lp0D9ZK76vfbskwAXLASucA6gm3O+Z2hoaGM4HB74rwUhsw4U1dTUTO3q6urWNK2nfgpU/wyWTsGWLgt9FtA6yPHDZUswneOcrzJN0wwGg60AohOBSQL4fL5mItoIYBLnvAPA1KUV5PbPlpxVIFSw6wEUhv2XLDx9cgSyKFL2dfXa2M26rr8CwLoREPJ6vY8Ro923uYH6KYS9YaA3BtRXEvxz5HQKkmZ0DCkgNp2JoXoSgyITDv4Zwy89CRBhF+d8eyQSaQuFQoP/BoR8Pt/PqgsLTsyT4GKEixbh7pNxNEyT4J+rjAZNBU+BZD67GNZ+PYjDf8QgTEKEEcuydpimuT4YDA6PBSIAIg9XsZKtdZIjMaHhpzimlxL8C1x2CrKDO8ZMGVS0hxPAvt+jmFzKcLQtii/PiRRB7J73AjDzQSQBVlRLJZtvFnIjGWzTRROdwxz+RcW5U5CZjhRMliLbTgxi66GrIPAnOzo6duYF0DStdW45zfp0kcve+WTCmQiwvTUG/50lGbMXSjhGzFYlWxGJYBYzzN8QxMAwP6Lr+n1jKbCLgNVnH3TDnTYZoTcBTHM78mfOLj1jsUdkGDPVx1FR6L/GH8LR05FewzCq8wJ4PJ5GENu3bXExlnsc0+UMOFqURnNvb1TXgTgHGKHk+r19+Pjbgbiu6668ALW1tSWyLHfNV6Wb9jeUpdOQabCcM80FmQrufDa/H8JnRwcihmGU5gUQDV6v9w2T07OHVk7G3EpRfMRsc8ifltmRPvM5HdxRxMWw4sUgfm2Ltum6Pns8gGoiunh7reL+qLEcYBlmy8xz+ru9WpKQqRRkzl4mDDPCnEcviLrwgWEYq8cEEI2apr0cN/nzbz1SjodmFdkBsmXOhsmSPL1KGGHv9wPYsKVXLMPGjo6O/eMCCC8oivKbW0bdV80qasqyCtA/ggkFcL1nRB9GiCuEJU+1o+evRKeu6+IUHR8XQHSora1dqCjK8TpVLjqwTrWXZepO1giRmjyyJ4MDUAiv77mMd3aHRUleYxjGrjFLcXajz+d74pov35vncWF3cxVKXcz+47EM5xzdRZ+DPw5i7QtBMAlfGIZx/3gbUs73Ap/Ptw7AVs9UmXY8U42Zlc6umEyDY9DMlAhAF8O7B/rw2tuXQAznAdxhGMaVCQGIQeLlVJKkneC8rGlZOR5fNgV1Hpe9rSRnbKtiFTEcPzWELTtDOH1+GJJEJ6LR6Iru7u7weMFFe04FUgOnT58+Q5blbQAeiMYs1KgKbp1ZjAqhCBFC4ThOnY2gr9+EIrOrnPNXDcN4c6zdLxtqTIBUZ03TZluW1cgYW8I5v4WIKpy2EIDTnPPDjLEP29vbxcnohq6/AfS02zDq/HSrAAAAAElFTkSuQmCC") 6 3, pointer !important;
+      }
+    
+      html,
+      body,
+      body select,
+      body .sweezy-custom-cursor-default-hover {
+        cursor: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAABOxJREFUWEe913tsFEUcB/Dv7O3ttZRSykNNc7R3hsQokiCiYjCYEEgqKCH2dRI1EjBCFGMI8Ifx+YftVTQ+ImI0MSYaIkT+4A95KIaIihJDiVZ8BMnO9q4tpcBBH3e93Z356dzulRZK6JNJLreb3ZvfZ38z85tbFo1G1xHRNgDtjLGYaZq/4wY2Fo1Gu6IVoeJznTa609Tluu7DiUTihxtlUAAnVjVNX1M9DbH1JlIX3bQkqrYsa/+NQHiAR0v1+mduRuKCi+rnODrPuw6Ax03T3D3RCA+wqlSvf/omQBLO9UrUbrJgttqSiJ63LGv7RCJygLpHpuoNaz0ABKHHJqx+JYnmf/tARC9ZlvXGRCE8wIqpesOamR7A9RAZQXjqzXYcO5kBiN6yLGvLRCAUwI4tLwnWPzEjFxgC3rckuJKwYUcnvj3eC8bwGed8nbo6nhAFyMYqS4z61dN9gJeB/IcIeHHnBez8qQeahr2c8zoA2fFC5AB1y6YYDbFpgwGunwmFIUJ8/yV8+F0P9AA7lE6nV3V0dPSOB8IDLCk2Gmp9gD8HchnIH6tvSdh+NI3Gg10IaDjmOM6K1tbW82NFeIAHi42GqqleBgYGveoc2H0yg61fd4Np+Mt13WXJZLJ1LIgcoHbxZCO+smQIAABXetNOwXLHhH3cwcZ93ZAAF0IsTSQSp0eL8AAPFBnx5UMArsqGB1CY788IrPumR5nUJlY52k3MAywsMuKVxVdnYKjhyGfCJZxISTx5OINeiYuu664czSbmAe6ZZMSXTb4MuFZg9fSOv0Rz90ic6ibEjmZxwaE0gCrO+YGRDIcHmF9oxJdM9ieg9Md7QKCBoCGOExmJmiYXZ23YUsrVlmXtGS5CAfpq5xWG4osnDZpoyNcBNfFyafer5MBzVbr98t2RJTx2UoBnWZdpmiUjA8wtCMUXFV4O1B/QD37FKmjLEL5sE2hKSZxOAymXkJUAA0BAO+e8bESAmttDocaFBYNrQD/Cf3o/9b9eEqhrcqE2BwAJIvoDwBki6gHQJ4T4PJlMNo8McJsRalwQGpyB/H6Qn3T+8ttzVmLTKQFGtNmyrLeHG+ha9+XmQM3sYKhxnuEBCDjS4WJPQqAzLfFsRQCLivxCJAiOINz3m0RK4DjnfMF4ADI1t+oFjXMM8LTElqYsfjkvoTNkGGNOmYEpR+4KQLPzFVHi/bPAO50MRHKJZVmHx4JQGchUR/SC+0sZtpywVaHrA9AI4F0AdQL46OMoQ6XKgj8s3S7hblNTJWEf53zFWAGd04OYcSZLCGqsmYhqOed/q07D4XBhMBi05hbQzL3lAzYqQXg5peGLHo2klHe2tLT8OVoEKy8vr9E07XUAP9u2vbGtrU1VtP4WiURe/X9qvLY3LDE/kF+WhDYHWJgKIUD0Ked87agB1/thWVnZDMMwWpYWUOEnpc7lgiQIG9JBHHR1Vf0ilmW1X6+voa7nFvP1WiQS2eGCrf+xNIsK8ndEATS7DA/ZhTAYtpqmqV7vRtyGBQiHw7N1Xf8nZgitIWj3/313BDBbFkEjvMc5f2HE0eFVz2G1aDT6lUZUtTPYh3tJ5BDbyMAHFIIGinHOdw2roytuGjagoqIiyhg7KsFuuQMCl8DQCk0FP+AvRTmhANX5rFmzygKBwGYAc1SRIqJDnHP16qbeJUfV/gOiekhOazMx5QAAAABJRU5ErkJggg==") 1 1, auto !important;
+      }
+    </style><style type="text/css">@font-face {
+  font-family: "xm-iconfont";
+  src: url('//at.alicdn.com/t/font_792691_ptvyboo0bno.eot?t=1574048839056');
+  /* IE9 */
+  src: url('//at.alicdn.com/t/font_792691_ptvyboo0bno.eot?t=1574048839056#iefix') format('embedded-opentype'), /* IE6-IE8 */ url('data:application/x-font-woff2;charset=utf-8;base64,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') format('woff2'), url('//at.alicdn.com/t/font_792691_ptvyboo0bno.woff?t=1574048839056') format('woff'), url('//at.alicdn.com/t/font_792691_ptvyboo0bno.ttf?t=1574048839056') format('truetype'), /* chrome, firefox, opera, Safari, Android, iOS 4.2+ */ url('//at.alicdn.com/t/font_792691_ptvyboo0bno.svg?t=1574048839056#iconfont') format('svg');
+  /* iOS 4.1- */
+}
+.xm-iconfont {
+  font-family: "xm-iconfont" !important;
+  font-size: 16px;
+  font-style: normal;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+.xm-icon-quanxuan:before {
+  content: "\e62c";
+}
+.xm-icon-caidan:before {
+  content: "\e610";
+}
+.xm-icon-fanxuan:before {
+  content: "\e837";
+}
+.xm-icon-pifu:before {
+  content: "\e668";
+}
+.xm-icon-qingkong:before {
+  content: "\e63e";
+}
+.xm-icon-sousuo:before {
+  content: "\e600";
+}
+.xm-icon-danx:before {
+  content: "\e62b";
+}
+.xm-icon-duox:before {
+  content: "\e613";
+}
+.xm-icon-close:before {
+  content: "\e601";
+}
+.xm-icon-expand:before {
+  content: "\e641";
+}
+.xm-icon-banxuan:before {
+  content: "\e60d";
+}
+</style><style type="text/css">@-webkit-keyframes xm-upbit {
+  from {
+    -webkit-transform: translate3d(0, 30px, 0);
+    opacity: 0.3;
+  }
+  to {
+    -webkit-transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
+}
+@keyframes xm-upbit {
+  from {
+    transform: translate3d(0, 30px, 0);
+    opacity: 0.3;
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
+}
+@-webkit-keyframes loader {
+  0% {
+    -webkit-transform: rotate(0deg);
+    transform: rotate(0deg);
+  }
+  100% {
+    -webkit-transform: rotate(360deg);
+    transform: rotate(360deg);
+  }
+}
+@keyframes loader {
+  0% {
+    -webkit-transform: rotate(0deg);
+    transform: rotate(0deg);
+  }
+  100% {
+    -webkit-transform: rotate(360deg);
+    transform: rotate(360deg);
+  }
+}
+xm-select {
+  background-color: #FFF;
+  position: relative;
+  border: 1px solid #E6E6E6;
+  border-radius: 2px;
+  display: block;
+  width: 100%;
+  cursor: pointer;
+  outline: none;
+}
+xm-select * {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-size: 14px;
+  font-weight: 400;
+  text-overflow: ellipsis;
+  user-select: none;
+  -ms-user-select: none;
+  -moz-user-select: none;
+  -webkit-user-select: none;
+}
+xm-select:hover,
+xm-select:focus {
+  border-color: #C0C4CC;
+}
+xm-select > .xm-tips {
+  color: #999999;
+  padding: 0 10px;
+  position: absolute;
+  display: flex;
+  height: 100%;
+  align-items: center;
+}
+xm-select > .xm-icon {
+  display: inline-block;
+  overflow: hidden;
+  position: absolute;
+  width: 0;
+  height: 0;
+  right: 10px;
+  top: 50%;
+  margin-top: -3px;
+  cursor: pointer;
+  border: 6px dashed transparent;
+  border-top-color: #C2C2C2;
+  border-top-style: solid;
+  transition: all 0.3s;
+  -webkit-transition: all 0.3s;
+}
+xm-select > .xm-icon-expand {
+  margin-top: -9px;
+  transform: rotate(180deg);
+}
+xm-select > .xm-label.single-row {
+  position: absolute;
+  top: 0;
+  bottom: 0px;
+  left: 0px;
+  right: 30px;
+  overflow: auto hidden;
+}
+xm-select > .xm-label.single-row .scroll {
+  overflow-y: hidden;
+}
+xm-select > .xm-label.single-row .label-content {
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+xm-select > .xm-label.auto-row .label-content {
+  flex-wrap: wrap;
+  padding-right: 30px !important;
+}
+xm-select > .xm-label.auto-row .xm-label-block > span {
+  white-space: unset;
+  height: 100%;
+}
+xm-select > .xm-label .scroll .label-content {
+  display: flex;
+  padding: 3px 10px;
+}
+xm-select > .xm-label .xm-label-block {
+  display: flex;
+  position: relative;
+  padding: 0px 5px;
+  margin: 2px 5px 2px 0;
+  border-radius: 3px;
+  align-items: baseline;
+  color: #FFF;
+}
+xm-select > .xm-label .xm-label-block > span {
+  display: flex;
+  color: #FFF;
+  white-space: nowrap;
+}
+xm-select > .xm-label .xm-label-block > i {
+  color: #FFF;
+  margin-left: 8px;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+}
+xm-select > .xm-label .xm-label-block.disabled {
+  background-color: #C2C2C2 !important;
+  cursor: no-drop !important;
+}
+xm-select > .xm-label .xm-label-block.disabled > i {
+  cursor: no-drop !important;
+}
+xm-select > .xm-body {
+  position: absolute;
+  left: 0;
+  top: 42px;
+  padding: 5px 0;
+  z-index: 999;
+  width: 100%;
+  min-width: fit-content;
+  border: 1px solid #E6E6E6;
+  background-color: #fff;
+  border-radius: 2px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12);
+  animation-name: xm-upbit;
+  animation-duration: 0.3s;
+  animation-fill-mode: both;
+}
+xm-select > .xm-body .scroll-body {
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+xm-select > .xm-body .scroll-body::-webkit-scrollbar {
+  width: 8px;
+}
+xm-select > .xm-body .scroll-body::-webkit-scrollbar-track {
+  -webkit-border-radius: 2em;
+  -moz-border-radius: 2em;
+  -ms-border-radius: 2em;
+  border-radius: 2em;
+  background-color: #FFF;
+}
+xm-select > .xm-body .scroll-body::-webkit-scrollbar-thumb {
+  -webkit-border-radius: 2em;
+  -moz-border-radius: 2em;
+  -ms-border-radius: 2em;
+  border-radius: 2em;
+  background-color: #C2C2C2;
+}
+xm-select > .xm-body.up {
+  top: auto;
+  bottom: 42px;
+}
+xm-select > .xm-body.relative {
+  position: relative;
+  display: block !important;
+  top: 0;
+  box-shadow: none;
+  border: none;
+  animation-name: none;
+  animation-duration: 0;
+  min-width: 100%;
+}
+xm-select > .xm-body .xm-group {
+  cursor: default;
+}
+xm-select > .xm-body .xm-group-item {
+  display: inline-block;
+  cursor: pointer;
+  padding: 0 10px;
+  color: #999;
+  font-size: 12px;
+}
+xm-select > .xm-body .xm-option {
+  display: flex;
+  align-items: center;
+  position: relative;
+  padding: 0 10px;
+  cursor: pointer;
+}
+xm-select > .xm-body .xm-option-icon {
+  color: transparent;
+  display: flex;
+  border: 1px solid #E6E6E6;
+  border-radius: 3px;
+  justify-content: center;
+  align-items: center;
+}
+xm-select > .xm-body .xm-option-icon.xm-custom-icon {
+  color: unset;
+  border: unset;
+}
+xm-select > .xm-body .xm-option-icon-hidden {
+  margin-right: -10px;
+}
+xm-select > .xm-body .xm-option-icon.xm-icon-danx {
+  border-radius: 100%;
+}
+xm-select > .xm-body .xm-option-content {
+  display: flex;
+  position: relative;
+  padding-left: 15px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  ;
+  width: calc(100% - 20px);
+}
+xm-select > .xm-body .xm-option.hide-icon .xm-option-content {
+  padding-left: 0;
+}
+xm-select > .xm-body .xm-option.selected.hide-icon .xm-option-content {
+  color: #FFF !important;
+}
+xm-select > .xm-body .xm-option .loader {
+  width: 0.8em;
+  height: 0.8em;
+  margin-right: 6px;
+  color: #C2C2C2;
+}
+xm-select > .xm-body .xm-select-empty {
+  text-align: center;
+  color: #999;
+}
+xm-select > .xm-body .disabled {
+  cursor: no-drop;
+}
+xm-select > .xm-body .disabled:hover {
+  background-color: #FFF;
+}
+xm-select > .xm-body .disabled .xm-option-icon {
+  border-color: #C2C2C2 !important;
+}
+xm-select > .xm-body .disabled .xm-option-content {
+  color: #C2C2C2 !important;
+}
+xm-select > .xm-body .disabled.selected > .xm-option-icon {
+  color: #C2C2C2 !important;
+}
+xm-select > .xm-body .xm-search {
+  background-color: #FFF !important;
+  position: relative;
+  padding: 0 10px;
+  margin-bottom: 5px;
+  cursor: pointer;
+}
+xm-select > .xm-body .xm-search > i {
+  position: absolute;
+  color: ;
+}
+xm-select > .xm-body .xm-search-input {
+  border: none;
+  border-bottom: 1px solid #E6E6E6;
+  padding-left: 27px;
+  cursor: text;
+}
+xm-select > .xm-body .xm-paging {
+  padding: 0 10px;
+  display: flex;
+  margin-top: 5px;
+}
+xm-select > .xm-body .xm-paging > span:first-child {
+  border-radius: 2px 0 0 2px;
+}
+xm-select > .xm-body .xm-paging > span:last-child {
+  border-radius: 0 2px 2px 0;
+}
+xm-select > .xm-body .xm-paging > span {
+  display: flex;
+  flex: auto;
+  justify-content: center;
+  vertical-align: middle;
+  margin: 0 -1px 0 0;
+  background-color: #fff;
+  color: #333;
+  font-size: 12px;
+  border: 1px solid #e2e2e2;
+  flex-wrap: nowrap;
+  width: 100%;
+  overflow: hidden;
+  min-width: 50px;
+}
+xm-select > .xm-body .xm-toolbar {
+  padding: 0 10px;
+  display: flex;
+  margin: -3px 0;
+  cursor: default;
+}
+xm-select > .xm-body .xm-toolbar .toolbar-tag {
+  cursor: pointer;
+  display: flex;
+  margin-right: 20px;
+  color: ;
+  align-items: baseline;
+}
+xm-select > .xm-body .xm-toolbar .toolbar-tag:hover {
+  opacity: 0.8;
+}
+xm-select > .xm-body .xm-toolbar .toolbar-tag:active {
+  opacity: 1;
+}
+xm-select > .xm-body .xm-toolbar .toolbar-tag > i {
+  margin-right: 2px;
+  font-size: 14px;
+}
+xm-select > .xm-body .xm-toolbar .toolbar-tag:last-child {
+  margin-right: 0;
+}
+xm-select > .xm-body .xm-body-custom {
+  line-height: initial;
+  cursor: default;
+}
+xm-select > .xm-body .xm-body-custom * {
+  box-sizing: initial;
+}
+xm-select > .xm-body .xm-tree {
+  position: relative;
+}
+xm-select > .xm-body .xm-tree-icon {
+  display: inline-block;
+  margin-right: 3px;
+  cursor: pointer;
+  border: 6px dashed transparent;
+  border-left-color: #C2C2C2;
+  border-left-style: solid;
+  transition: all 0.3s;
+  -webkit-transition: all 0.3s;
+  z-index: 2;
+  visibility: hidden;
+}
+xm-select > .xm-body .xm-tree-icon.expand {
+  margin-top: 3px;
+  margin-right: 5px;
+  margin-left: -2px;
+  transform: rotate(90deg);
+}
+xm-select > .xm-body .xm-tree-icon.xm-visible {
+  visibility: visible;
+}
+xm-select > .xm-body .xm-tree .left-line {
+  position: absolute;
+  left: 13px;
+  width: 0;
+  z-index: 1;
+  border-left: 1px dotted #c0c4cc !important;
+}
+xm-select > .xm-body .xm-tree .top-line {
+  position: absolute;
+  left: 13px;
+  height: 0;
+  z-index: 1;
+  border-top: 1px dotted #c0c4cc !important;
+}
+xm-select > .xm-body .xm-tree .xm-tree-icon + .top-line {
+  margin-left: 1px;
+}
+xm-select > .xm-body .scroll-body > .xm-tree > .xm-option > .top-line,
+xm-select > .xm-body .scroll-body > .xm-option > .top-line {
+  width: 0 !important;
+}
+xm-select > .xm-body .xm-cascader-box {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  padding: 5px 0;
+  border: 1px solid #E6E6E6;
+  background-color: #fff;
+  border-radius: 2px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12);
+  margin: -1px;
+}
+xm-select > .xm-body .xm-cascader-box::before {
+  content: ' ';
+  position: absolute;
+  width: 0;
+  height: 0;
+  border: 6px solid transparent;
+  border-right-color: #E6E6E6;
+  top: 10px;
+  left: -12px;
+}
+xm-select > .xm-body .xm-cascader-box::after {
+  content: ' ';
+  position: absolute;
+  width: 0;
+  height: 0;
+  border: 6px solid transparent;
+  border-right-color: #fff;
+  top: 10px;
+  left: -11px;
+}
+xm-select > .xm-body .xm-cascader-scroll {
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+xm-select > .xm-body.cascader {
+  width: unset;
+  min-width: unset;
+}
+xm-select > .xm-body.cascader .xm-option-content {
+  padding-left: 8px;
+}
+xm-select > .xm-body.cascader .disabled .xm-right-arrow {
+  color: #C2C2C2 !important;
+}
+xm-select > .xm-body.cascader .hide-icon.disabled .xm-right-arrow {
+  color: #999 !important;
+}
+xm-select .xm-input {
+  cursor: pointer;
+  border-radius: 2px;
+  border-width: 1px;
+  border-style: solid;
+  border-color: #E6E6E6;
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  background-color: #FFF;
+  line-height: 1.3;
+  padding-left: 10px;
+  outline: 0;
+  user-select: text;
+  -ms-user-select: text;
+  -moz-user-select: text;
+  -webkit-user-select: text;
+}
+xm-select .dis {
+  display: none;
+}
+xm-select .loading {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+xm-select .loader {
+  border: 0.2em dotted currentcolor;
+  border-radius: 50%;
+  -webkit-animation: 1s loader linear infinite;
+  animation: 1s loader linear infinite;
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  color: inherit;
+  vertical-align: middle;
+  pointer-events: none;
+}
+xm-select .xm-select-default {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border: none;
+  visibility: hidden;
+}
+xm-select .xm-select-disabled {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  cursor: no-drop;
+  z-index: 2;
+  opacity: 0.3;
+  background-color: #FFF;
+}
+xm-select .item--divided {
+  border-top: 1px solid #ebeef5;
+  width: calc(100% - 20px);
+  cursor: initial;
+}
+xm-select .xm-right-arrow {
+  position: absolute;
+  color: ;
+  right: 5px;
+  top: -1px;
+  font-weight: 700;
+  transform: scale(0.6, 1);
+}
+xm-select .xm-right-arrow::after {
+  content: '>';
+}
+xm-select[size='large'] {
+  min-height: 40px;
+  line-height: 40px;
+}
+xm-select[size='large'] .xm-input {
+  height: 40px;
+}
+xm-select[size='large'] .xm-label .scroll .label-content {
+  line-height: 34px;
+}
+xm-select[size='large'] .xm-label .xm-label-block {
+  height: 30px;
+  line-height: 30px;
+}
+xm-select[size='large'] .xm-body .xm-option .xm-option-icon {
+  height: 20px;
+  width: 20px;
+  font-size: 20px;
+}
+xm-select[size='large'] .xm-paging > span {
+  height: 34px;
+  line-height: 34px;
+}
+xm-select[size='large'] .xm-tree .left-line {
+  height: 100%;
+  bottom: 20px;
+}
+xm-select[size='large'] .xm-tree .left-line-group {
+  height: calc(100% - 40px);
+}
+xm-select[size='large'] .xm-tree .xm-tree-icon.xm-hidden + .top-line {
+  top: 19px;
+}
+xm-select[size='large'] .item--divided {
+  margin: 10px;
+}
+xm-select {
+  min-height: 36px;
+  line-height: 36px;
+}
+xm-select .xm-input {
+  height: 36px;
+}
+xm-select .xm-label .scroll .label-content {
+  line-height: 30px;
+}
+xm-select .xm-label .xm-label-block {
+  height: 26px;
+  line-height: 26px;
+}
+xm-select .xm-body .xm-option .xm-option-icon {
+  height: 18px;
+  width: 18px;
+  font-size: 18px;
+}
+xm-select .xm-paging > span {
+  height: 30px;
+  line-height: 30px;
+}
+xm-select .xm-tree .left-line {
+  height: 100%;
+  bottom: 18px;
+}
+xm-select .xm-tree .left-line-group {
+  height: calc(100% - 36px);
+}
+xm-select .xm-tree .xm-tree-icon.xm-hidden + .top-line {
+  top: 17px;
+}
+xm-select .item--divided {
+  margin: 9px;
+}
+xm-select[size='small'] {
+  min-height: 32px;
+  line-height: 32px;
+}
+xm-select[size='small'] .xm-input {
+  height: 32px;
+}
+xm-select[size='small'] .xm-label .scroll .label-content {
+  line-height: 26px;
+}
+xm-select[size='small'] .xm-label .xm-label-block {
+  height: 22px;
+  line-height: 22px;
+}
+xm-select[size='small'] .xm-body .xm-option .xm-option-icon {
+  height: 16px;
+  width: 16px;
+  font-size: 16px;
+}
+xm-select[size='small'] .xm-paging > span {
+  height: 26px;
+  line-height: 26px;
+}
+xm-select[size='small'] .xm-tree .left-line {
+  height: 100%;
+  bottom: 16px;
+}
+xm-select[size='small'] .xm-tree .left-line-group {
+  height: calc(100% - 32px);
+}
+xm-select[size='small'] .xm-tree .xm-tree-icon.xm-hidden + .top-line {
+  top: 15px;
+}
+xm-select[size='small'] .item--divided {
+  margin: 8px;
+}
+xm-select[size='mini'] {
+  min-height: 28px;
+  line-height: 28px;
+}
+xm-select[size='mini'] .xm-input {
+  height: 28px;
+}
+xm-select[size='mini'] .xm-label .scroll .label-content {
+  line-height: 22px;
+}
+xm-select[size='mini'] .xm-label .xm-label-block {
+  height: 18px;
+  line-height: 18px;
+}
+xm-select[size='mini'] .xm-body .xm-option .xm-option-icon {
+  height: 14px;
+  width: 14px;
+  font-size: 14px;
+}
+xm-select[size='mini'] .xm-paging > span {
+  height: 22px;
+  line-height: 22px;
+}
+xm-select[size='mini'] .xm-tree .left-line {
+  height: 100%;
+  bottom: 14px;
+}
+xm-select[size='mini'] .xm-tree .left-line-group {
+  height: calc(100% - 28px);
+}
+xm-select[size='mini'] .xm-tree .xm-tree-icon.xm-hidden + .top-line {
+  top: 13px;
+}
+xm-select[size='mini'] .item--divided {
+  margin: 7px;
+}
+.layui-form-pane xm-select {
+  margin: -1px -1px -1px 0;
+}
+</style><style type="text/css">
+		[mt_node=trans_loading]::after{
+		content: '';
+		vertical-align: middle !important;
+		width: 1em !important;
+		height: 1em !important;
+		display: inline-block !important;
+		margin: 0 4px !important;
+		border: 2px rgba(0, 0, 0, 0.25) solid !important;
+		border-top: 2px rgba(0, 0, 0, 1) solid !important;
+		border-radius: 50% !important;
+		padding: 0 !important;
+		-webkit-animation: immersive-translate-loading-animation 0.6s infinite linear !important;
+		animation: immersive-translate-loading-animation 0.6s infinite linear !important;
+		}
+
+		@keyframes immersive-translate-loading-animation {
+			from {
+				transform: rotate(0deg,0deg,0deg);
+			}
+			to {
+				transform: rotate(359deg,0deg,0deg);
+			}
+		}
+	</style><style type="text/css">[mt_node^=trans]{display: none !important;}</style></head>
+<body>
+<div align="center">
+<h2><a href="https://pdos.csail.mit.edu/6.824/index.html">6.5840</a> - Spring 2025</h2>
+<h1>6.5840 Lab 4: Fault-tolerant Key/Value Service</h1>
+
+<p>
+  <b><a href="https://pdos.csail.mit.edu/6.824/labs/collab.html">Collaboration policy</a></b> //
+  <b><a href="https://pdos.csail.mit.edu/6.824/labs/submit.html">Submit lab</a></b> //
+  <b><a href="https://pdos.csail.mit.edu/6.824/labs/go.html">Setup Go</a></b> //
+  <b><a href="https://pdos.csail.mit.edu/6.824/labs/guidance.html">Guidance</a></b> //
+  <b><a href="https://piazza.com/mit/spring2025/65840">Piazza</a></b>
+</p>
+
+</div>
+
+<hr>
+
+<h3>Introduction</h3>
+
+<p>
+In this lab you will build a fault-tolerant key/value storage
+service using your Raft library from
+<a href="https://pdos.csail.mit.edu/6.824/labs/lab-raft1.html">Lab 3</a>.
+To clients, the service looks similar to the server of
+<a href="https://pdos.csail.mit.edu/6.824/labs/lab-kvsrv1.html">Lab 2</a>.
+However, instead of a single server, the service consists
+of a set of servers that use Raft to help them maintain
+identical databases.
+Your key/value service should continue to
+process client requests as long as a majority of the servers
+are alive and can communicate, in spite of other failures or
+network partitions.
+
+After Lab 4, you will have implemented all parts (Clerk, Service, and Raft) shown in the <a href="https://pdos.csail.mit.edu/6.824/figs/kvraft.pdf">diagram of Raft interactions</a>.
+
+</p><p>
+  Clients will interact with your key/value service through a Clerk,
+  as in Lab 2. A Clerk implements the <tt>Put</tt> and <tt>Get</tt>
+  methods with the same semantics as Lab 2: Puts are at-most-once
+  and the Puts/Gets must form a linearizable history.
+  
+</p><p>
+Providing linearizability is relatively easy for a single server. It is
+harder if the service is replicated, since all servers must choose the same
+execution order for concurrent requests, must avoid replying to
+clients using state that isn't up to date, and must recover their
+state after a failure in a way that preserves all acknowledged client
+updates.
+
+</p><p>
+  This lab has three parts. In part A, you will implement a
+  replicated-state machine package, <tt>rsm</tt>, using your raft
+  implementation; <tt>rsm</tt> is agnostic of the requests that it
+  replicates.  In part B, you will implement a replicated key/value
+  service using <tt>rsm</tt>, but without using snapshots.  In part C,
+  you will use your snapshot implementation from Lab 3D, which will
+  allow Raft to discard old log entries. Please submit each part by
+  the respective deadline.
+
+</p><p>
+You should review the
+<a href="https://pdos.csail.mit.edu/6.824/papers/raft-extended.pdf">extended Raft paper</a>,
+in particular Section 7 (but not 8). For a wider
+perspective, have a look at Chubby, Paxos Made Live,
+Spanner, Zookeeper, Harp, Viewstamped Replication, and
+<a href="http://static.usenix.org/event/nsdi11/tech/full_papers/Bolosky.pdf">Bolosky et al.</a>
+
+</p><p>
+Start early.
+
+</p><h3>Getting Started</h3>
+
+<p>
+We supply you with skeleton code and tests in <tt>src/kvraft1</tt>.
+The skeleton code uses the skeleton package <tt>src/kvraft1/rsm</tt> to
+replicate a server.  A server must implement
+the <tt>StateMachine</tt> interface defined in <tt>rsm</tt> to
+replicate itself using <tt>rsm</tt>. Most of your work will be
+implementing <tt>rsm</tt> to provide server-agnostic replication.  You
+will also need to modify <tt>kvraft1/client.go</tt>
+and <tt>kvraft1/server.go</tt> to implement the server-specific parts.
+This split allows you to re-use <tt>rsm</tt> in the next lab.  You may
+be able to re-use some of your Lab 2 code (e.g., re-using the server
+code by copying or importing the <tt>"src/kvsrv1"</tt> package) but it is not a
+requirement.
+
+</p><p>
+To get up and running, execute the following commands.
+Don't forget the <tt>git pull</tt> to get the latest software.
+</p><pre>$ cd ~/6.5840
+$ git pull
+..
+</pre>
+
+<h3>Part A: replicated state machine (RSM) <script>g("moderate/hard")</script>(<a class="moderate/hard" href="https://pdos.csail.mit.edu/6.824/labs/guidance.html">moderate/hard</a>)</h3>
+
+<pre>$ cd src/kvraft1/rsm
+$ go test -v
+=== RUN   TestBasic
+Test RSM basic (reliable network)...
+..
+    config.go:147: one: took too long
+</pre>
+
+<p>
+In the common situation of a client/server service using Raft for
+replication, the service interacts with Raft in two ways: the service
+leader submits client operations by calling <tt>raft.Start()</tt>, and all
+service replicas receive committed operations via Raft's <tt>applyCh</tt>,
+which they execute. On the leader, these two activities interact. At
+any given time, some server goroutines are handling client requests,
+have called <tt>raft.Start()</tt>, and each is waiting for its operation to
+commit and to find out what the result of executing the operation is.
+And as committed operations appear on the <tt>applyCh</tt>, each needs to be
+executed by the service, and the results need to be handed to the goroutine that
+called <tt>raft.Start()</tt> so that it can return the result to the client.
+
+</p><p>
+The <tt>rsm</tt> package encapsulates the above interaction. It sits
+as a layer between the service (e.g. a key/value database) and Raft.
+In <tt>rsm/rsm.go</tt> you will need to implement a "reader" goroutine
+that reads the <tt>applyCh</tt>, and a <tt>rsm.Submit()</tt> function that calls
+<tt>raft.Start()</tt> for a client operation and then waits for the reader
+goroutine to hand it the result of executing that operation.
+
+</p><p>
+The service that is using <tt>rsm</tt> appears to the <tt>rsm</tt>
+reader goroutine as a <tt>StateMachine</tt> object providing
+a <tt>DoOp()</tt> method. The reader goroutine should hand each
+committed operation to <tt>DoOp()</tt>; <tt>DoOp()</tt>'s return value
+should be given to the corresponding <tt>rsm.Submit()</tt> call for
+it to return.
+<tt>DoOp()</tt>'s argument and return value have type
+<tt>any</tt>; the actual values should have the same types as the
+argument and return values that the service passes
+to <tt>rsm.Submit()</tt>, respectively.
+
+</p><p>
+The service should pass each client operation
+to <tt>rsm.Submit()</tt>. To help the reader goroutine match <tt>applyCh</tt>
+messages with waiting calls
+to <tt>rsm.Submit()</tt>, <tt>Submit()</tt> should wrap each client
+operation in an <tt>Op</tt> structure along with a unique identifier.
+<tt>Submit()</tt> should then wait until the operation has committed
+and been executed, and return the result of execution (the
+value returned by <tt>DoOp()</tt>).
+If <tt>raft.Start()</tt> indicates that the current peer is not the
+Raft leader, <tt>Submit()</tt> should return
+an <tt>rpc.ErrWrongLeader</tt> error. <tt>Submit()</tt> should detect
+and handle
+the situation in which leadership changed just after it
+called <tt>raft.Start()</tt>, causing the operation to be lost (never
+committed).
+
+</p><p>
+For Part A, the <tt>rsm</tt> tester acts as the service, submitting
+operations that it interprets as increments on a state consisting of a
+single integer. In Part B you'll use <tt>rsm</tt> as part of a key/value service that
+implements <tt>StateMachine</tt> (and <tt>DoOp()</tt>),
+and calls <tt>rsm.Submit()</tt>.
+
+</p><p>If all goes well, the sequence of events for a client request is:
+  </p><ul>
+    <li> The client sends a request to the service leader.
+    </li><li> The service leader calls <tt>rsm.Submit()</tt> with the request.
+    </li><li> <tt>rsm.Submit()</tt> calls <tt>raft.Start()</tt> with
+      the request, and then waits.
+    </li><li> Raft commits the request and sends it on all peers' <tt>applyCh</tt>s.
+    </li><li> The <tt>rsm</tt> reader goroutine on each peer reads the
+         request from the <tt>applyCh</tt> and passes it to the service's
+         <tt>DoOp()</tt>.
+    </li><li> On the leader, the <tt>rsm</tt> reader goroutine hands
+         the <tt>DoOp()</tt> return value to the <tt>Submit()</tt>
+         goroutine that originally submitted the request, and
+         <tt>Submit()</tt> returns that value.
+  </li></ul>
+
+<p>
+Your servers should not directly communicate; they
+should only interact with each other through Raft.
+
+</p><div class="todo">
+<p>
+  Implement <tt>rsm.go</tt>: the <tt>Submit()</tt> method and
+  a reader goroutine.
+  You have completed this task if
+  you pass the <tt>rsm</tt> 4A tests:
+</p></div>
+
+<pre>  $ cd src/kvraft1/rsm
+  $ go test -v -run 4A
+=== RUN   TestBasic4A
+Test RSM basic (reliable network)...
+  ... Passed --   1.2  3    48    0
+--- PASS: TestBasic4A (1.21s)
+=== RUN   TestLeaderFailure4A
+  ... Passed --  9223372036.9  3    31    0
+--- PASS: TestLeaderFailure4A (1.50s)
+PASS
+ok      6.5840/kvraft1/rsm      2.887s
+</pre>
+
+<ul class="hints">
+
+<li>
+You should not need to add any fields to the Raft <tt>ApplyMsg</tt>,
+or to Raft RPCs such as <tt>AppendEntries</tt>, but you are allowed to do so.    
+
+</li><li> Your solution needs to handle an <tt>rsm</tt> leader that has
+called <tt>Start()</tt> for a request submitted with <tt>Submit()</tt> but
+  loses its leadership before the request is committed to the log.
+  One way to do this is for
+the
+<tt>rsm</tt> to detect that it has lost leadership,
+by noticing that Raft's term has changed or
+a different request has
+appeared at the index returned by <tt>Start()</tt>,
+and return <tt>rpc.ErrWrongLeader</tt> from <tt>Submit()</tt>.
+If the ex-leader is partitioned by
+itself, it won't know about new leaders; but
+any client in the same partition won't be able
+to talk to a new leader either, so it's OK in
+this case for the server to wait
+indefinitely until the partition heals.
+
+</li><li>The tester calls your Raft's <tt>rf.Kill()</tt> when it is
+  shutting down a peer. Raft should close the <tt>applyCh</tt> so that
+  your rsm learns about the shutdown, and can exit out of all loops.
+
+</li></ul>
+
+<h3>Part B: Key/value service without snapshots <script>g("moderate")</script>(<a class="moderate" href="https://pdos.csail.mit.edu/6.824/labs/guidance.html">moderate</a>)</h3>
+
+<pre>$ cd src/kvraft1
+$ go test -v -run TestBasic4B
+=== RUN   TestBasic4B
+Test: one client (4B basic) (reliable network)...
+    kvtest.go:62: Wrong error 
+$
+</pre>
+
+<p>Now you will use the <tt>rsm</tt> package to replicate a
+  key/value server. Each of the servers ("kvservers") will have an
+  associated rsm/Raft peer.  Clerks send <tt>Put()</tt>
+  and <tt>Get()</tt> RPCs to the kvserver whose associated Raft is the
+  leader. The kvserver code submits the Put/Get operation to <tt>rsm</tt>,
+  which replicates it using Raft and invokes your
+  server's <tt>DoOp</tt> at each peer, which should apply the
+  operations to the peer's key/value database; the intent is for the
+  servers to maintain identical replicas of the key/value database.
+
+</p><p>A <tt>Clerk</tt> sometimes doesn't
+know which kvserver is the Raft leader. If the <tt>Clerk</tt> sends an
+RPC to the wrong kvserver, or if it cannot reach the kvserver,
+the <tt>Clerk</tt> should re-try by sending to a different kvserver.
+If the key/value service commits the operation to its Raft log
+(and hence applies the operation to the key/value state machine), the
+leader reports the result to the <tt>Clerk</tt> by responding to its
+RPC. If the operation failed to commit (for example, if the leader was
+replaced), the server reports an error, and the <tt>Clerk</tt> retries with a
+different server.
+
+</p><p>
+Your kvservers should not directly communicate; they
+should only interact with each other through Raft.
+
+</p><div class="todo">
+
+Your first task is to implement a solution that works when there are no dropped
+messages, and no failed servers.
+
+<p>
+Feel free to copy your client code from Lab 2 (<tt>kvsrv1/client.go</tt>)
+into <tt>kvraft1/client.go</tt>. You will need to add logic for deciding which
+kvserver to send each RPC to.
+
+</p><p>
+You'll also need to implement <tt>Put()</tt> and <tt>Get()</tt> RPC
+handlers in <tt>server.go</tt>. These handlers should submit the
+request to Raft using <tt>rsm.Submit()</tt>. As the <tt>rsm</tt>
+package reads commands from
+<tt>applyCh</tt>, it should invoke the <tt>DoOp</tt> method, which you
+will have to implement in <tt>server.go</tt>.
+
+</p><p>
+You have completed this task when you
+<strong>reliably</strong> pass the first test in the
+test suite, with <tt>go test -v -run TestBasic4B</tt>.
+</p></div>
+
+<ul class="hints">
+
+<li>
+A kvserver should not complete a <tt>Get()</tt> RPC if it is not part
+of a majority (so that it does not serve stale data). A simple
+solution is to enter every <tt>Get()</tt> (as well as
+each <tt>Put()</tt>) in the Raft log using <tt>Submit()</tt>. You don't
+have to implement the optimization for read-only operations that is
+described in Section 8.
+
+</li><li>
+It's best to add locking from the start because the
+need to avoid deadlocks sometimes affects overall code design. Check
+that your code is race-free using
+<tt>go test -race</tt>.
+
+</li></ul>
+
+Now you should modify your solution to continue in the face of network
+and server failures.
+One problem you'll face is that a
+<tt>Clerk</tt> may have to send an RPC multiple times until it finds a 
+kvserver that replies positively. If a leader fails just after
+committing an entry to the Raft log, the <tt>Clerk</tt> may not
+receive a reply, and thus may 
+re-send the request to another leader.
+Each call to
+<tt>Clerk.Put()</tt> should
+result in just a single execution for a particular version number.
+
+<p class="todo">
+  Add code to handle failures.  Your <tt>Clerk</tt> can use a similar
+  retry plan as in lab 2, including returning <tt>ErrMaybe</tt> if a
+  response to a retried <tt>Put</tt> RPC is lost.
+  You are done when your code reliably passes all the 4B tests, with
+  <tt>go test -v -run 4B</tt>.
+
+</p><ul class="hints">
+
+  <li>Recall that the rsm leader may lose its leadership and return
+    <tt>rpc.ErrWrongLeader</tt> from <tt>Submit()</tt>.  In this case you
+    should arrange for the Clerk to re-send the request to other
+    servers until it finds the new leader.
+
+</li><li>
+You will probably have to modify your 
+Clerk to remember which server turned out to
+be the leader for the last RPC, and send the
+next RPC to that server first. This will avoid
+wasting time searching for the leader on every
+RPC, which may help you pass some of the tests
+quickly enough.
+
+</li></ul>
+
+<p>
+Your code should now pass the Lab 4B tests, like this:
+
+</p><pre>$ cd kvraft1
+$ go test -run 4B
+Test: one client (4B basic) ...
+  ... Passed --   3.2  5  1041  183
+Test: one client (4B speed) ...
+  ... Passed --  15.9  3  3169    0
+Test: many clients (4B many clients) ...
+  ... Passed --   3.9  5  3247  871
+Test: unreliable net, many clients (4B unreliable net, many clients) ...
+  ... Passed --   5.3  5  1035  167
+Test: unreliable net, one client (4B progress in majority) ...
+  ... Passed --   2.9  5   155    3
+Test: no progress in minority (4B) ...
+  ... Passed --   1.6  5   102    3
+Test: completion after heal (4B) ...
+  ... Passed --   1.3  5    67    4
+Test: partitions, one client (4B partitions, one client) ...
+  ... Passed --   6.2  5   958  155
+Test: partitions, many clients (4B partitions, many clients (4B)) ...
+  ... Passed --   6.8  5  3096  855
+Test: restarts, one client (4B restarts, one client 4B ) ...
+  ... Passed --   6.7  5   311   13
+Test: restarts, many clients (4B restarts, many clients) ...
+  ... Passed --   7.5  5  1223   95
+Test: unreliable net, restarts, many clients (4B unreliable net, restarts, many clients ) ...
+  ... Passed --   8.4  5   804   33
+Test: restarts, partitions, many clients (4B restarts, partitions, many clients) ...
+  ... Passed --  10.1  5  1308  105
+Test: unreliable net, restarts, partitions, many clients (4B unreliable net, restarts, partitions, many clients) ...
+  ... Passed --  11.9  5  1040   33
+Test: unreliable net, restarts, partitions, random keys, many clients (4B unreliable net, restarts, partitions, random keys, many clients) ...
+  ... Passed --  12.1  7  2801   93
+PASS
+ok      6.5840/kvraft1  103.797s
+</pre>
+
+<p>
+The numbers after each <tt>Passed</tt> are real time in seconds,
+number of peers, number of RPCs sent (including client RPCs), and
+number of key/value operations executed (<tt>Clerk</tt> Get/Put
+calls).
+
+</p><h3>Part C: Key/value service with snapshots <script>g("moderate")</script>(<a class="moderate" href="https://pdos.csail.mit.edu/6.824/labs/guidance.html">moderate</a>)</h3>
+
+<p>
+As things stand now, your key/value server doesn't call your Raft
+library's <tt>Snapshot()</tt> method, so a rebooting server has to
+replay the complete persisted Raft log in order to restore its state.
+Now you'll modify kvserver and <tt>rsm</tt> to cooperate with Raft to save log space
+and reduce restart time, using Raft's <tt>Snapshot()</tt> from Lab 3D.
+
+</p><p>
+The tester passes <tt>maxraftstate</tt> to your
+<tt>StartKVServer()</tt>, which passes it
+to <tt>rsm</tt>. <tt>maxraftstate</tt> indicates the maximum allowed
+size of your persistent Raft state in bytes (including the log, but
+not including snapshots). You should compare <tt>maxraftstate</tt>
+to <tt>rf.PersistBytes()</tt>.  Whenever your <tt>rsm</tt>
+detects that the Raft state size is approaching this threshold, it
+should save a snapshot by calling
+Raft's <tt>Snapshot</tt>.  <tt>rsm</tt> can create this snapshot
+by calling the <tt>Snapshot</tt> method of the <tt>StateMachine</tt>
+interface to obtain a snapshot of the kvserver.
+If <tt>maxraftstate</tt> is -1, you do not have to snapshot.
+The <tt>maxraftstate</tt> limit applies to the GOB-encoded
+bytes your Raft passes as the first argument to
+<tt>persister.Save()</tt>.  
+
+</p><p>
+You can find the source for the <tt>persister</tt> object in
+<tt>tester1/persister.go</tt>.
+
+</p><p class="todo">
+Modify your rsm so that it detects when the persisted Raft state
+grows too large, and then hands a snapshot to Raft.  When
+a <tt>rsm</tt> server restarts, it should read the snapshot
+with <tt>persister.ReadSnapshot()</tt> and, if the snapshot's
+length is greater than zero, pass the snapshot to the
+<tt>StateMachine</tt>'s <tt>Restore()</tt> method.
+You complete this task if you
+pass TestSnapshot4C in <tt>rsm</tt>.
+
+</p><pre>$ cd kvraft1/rsm
+$ go test -run TestSnapshot4C
+=== RUN   TestSnapshot4C
+  ... Passed --  9223372036.9  3   230    0
+--- PASS: TestSnapshot4C (3.88s)
+PASS
+ok      6.5840/kvraft1/rsm      3.882s
+</pre>
+
+<ul class="hints">
+<li>
+Think about when <tt>rsm</tt> should snapshot its state and what
+should be included in the snapshot beyond just the server state. Raft
+stores each snapshot in the persister object using
+<tt>Save()</tt>,
+along with corresponding Raft state.
+You can read the
+latest stored snapshot using <tt>ReadSnapshot()</tt>.
+</li><li>Capitalize all fields of structures stored in the snapshot.
+</li></ul>
+
+<p class="todo">
+  Implement the <tt>kvraft1/server.go</tt> <tt>Snapshot()</tt> and <tt>Restore()</tt>
+  methods, which <tt>rsm</tt> calls.
+  Modify <tt>rsm</tt> to handle applyCh messages that contain
+  snapshots.
+</p><ul class="hints">
+<li>You may have bugs in your Raft and rsm library that this task
+  exposes.  If you make changes to your Raft implementation make sure
+  it continues to pass all of the Lab 3 tests.
+</li><li>
+A reasonable amount of time to take for the Lab 4 tests is 400 seconds
+of real time and 700 seconds of CPU time.
+</li></ul>
+
+<p>
+Your code should pass the 4C tests (as in the example here) as well
+as the 4A+B tests (and your Raft must continue to pass the Lab 3 tests).
+</p><pre>$ go test -run 4C
+Test: snapshots, one client (4C SnapshotsRPC) ...
+Test: InstallSnapshot RPC (4C) ...
+  ... Passed --   4.5  3   241   64
+Test: snapshots, one client (4C snapshot size is reasonable) ...
+  ... Passed --  11.4  3  2526  800
+Test: snapshots, one client (4C speed) ...
+  ... Passed --  14.2  3  3149    0
+Test: restarts, snapshots, one client (4C restarts, snapshots, one client) ...
+  ... Passed --   6.8  5   305   13
+Test: restarts, snapshots, many clients (4C restarts, snapshots, many clients ) ...
+  ... Passed --   9.0  5  5583  795
+Test: unreliable net, snapshots, many clients (4C unreliable net, snapshots, many clients) ...
+  ... Passed --   4.7  5   977  155
+Test: unreliable net, restarts, snapshots, many clients (4C unreliable net, restarts, snapshots, many clients) ...
+  ... Passed --   8.6  5   847   33
+Test: unreliable net, restarts, partitions, snapshots, many clients (4C unreliable net, restarts, partitions, snapshots, many clients) ...
+  ... Passed --  11.5  5   841   33
+Test: unreliable net, restarts, partitions, snapshots, random keys, many clients (4C unreliable net, restarts, partitions, snapshots, random keys, many clients) ...
+  ... Passed --  12.8  7  2903   93
+PASS
+ok      6.5840/kvraft1  83.543s
+</pre>
+
+
+
+
+
+
+
+
+
+
+
+</body><volc-translate style="position: fixed; top: 0px; left: 0px; width: 0px; height: 0px; z-index: 2147483647;"><template shadowrootmode="open"><link rel="stylesheet" href="chrome-extension://klgfhbiooeogdfodpopgppeadghjjemk/styles/content.css"><main id="volc_translate"><div class="App__Wrapper-sc-t1bcp1-0 dljXSv"></div></main><style data-styled="active" data-styled-version="5.3.9"></style></template></volc-translate></html>
