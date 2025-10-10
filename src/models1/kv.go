@@ -53,14 +53,36 @@ var KvModel = porcupine.Model{
 		switch inp.Op {
 		case 0:
 			// get
-			return out.Value == st.Value, state
+			if out.Err == "ErrNoKey" {
+				return st.Value == "" && st.Version == 0, state
+			}
+			if out.Err == "OK" {
+				return out.Value == st.Value && out.Version == uint64(st.Version), state
+			}
+			if out.Err == "ErrMaybe" {
+				return out.Version <= uint64(st.Version), state
+			}
+			return false, state
 		case 1:
 			// put
 			if st.Version == inp.Version {
-				return out.Err == "OK" || out.Err == "ErrMaybe", KvState{inp.Value, st.Version + 1}
-			} else {
-				return out.Err == "ErrVersion" || out.Err == "ErrMaybe", st
+				switch out.Err {
+				case "OK":
+					return true, KvState{Value: inp.Value, Version: st.Version + 1}
+				case "ErrMaybe":
+					return true, KvState{Value: inp.Value, Version: st.Version + 1}
+				default:
+					return false, st
+				}
 			}
+			// client认为版本不匹配
+			if out.Err == "ErrVersion" {
+				return st.Version != inp.Version, st
+			}
+			if out.Err == "ErrMaybe" {
+				return st.Version >= inp.Version, st
+			}
+			return false, st
 		default:
 			return false, "<invalid>"
 		}
