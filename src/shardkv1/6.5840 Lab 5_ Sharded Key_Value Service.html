@@ -1,0 +1,1540 @@
+<!DOCTYPE html>
+<!-- saved from url=(0053)https://pdos.csail.mit.edu/6.824/labs/lab-shard1.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+		<link rel="stylesheet" href="./6.5840 Lab 5_ Sharded Key_Value Service_files/style.css" type="text/css">
+		<script src="./6.5840 Lab 5_ Sharded Key_Value Service_files/guidance.js.&#19979;&#36733;"></script>  
+		<title>6.5840 Lab 5: Sharded Key/Value Service</title>
+	<style id="sweezy-cursors--styles">
+      body a,
+      body button,
+      body [type='button'],
+      body input[type='reset'],
+      body input[type='submit'],
+      body [role="button"],
+      ::-webkit-search-cancel-button,
+      ::-webkit-search-decoration,
+      ::-webkit-scrollbar-button, 
+      ::-webkit-file-upload-button,
+      body .sweezy-custom-cursor-hover,
+      body button.sweezy-custom-cursor-hover,
+      body a.sweezy-custom-cursor-hover {
+        cursor: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAABVFJREFUWEe9l3tsFFUUxr9zZ2bbbgvFtExpWnZ3QgEjGghEQlATjEWp0ShY4h8WkRj/JNQYIdHEKGh8RB4JGu2GIBoiREQRISomysM14iOIPLQFO9N0+8BdGuhj233MXLk7s9tl3W2lmp1ksjt7793zu9/57rl3CHkuj8ezkjH2EhHNANAG4Dld1z/P13+iv1OugV6vdzkj9kk1LCzmCRwjGSGQZZpmQ2dn55GJBss1LieApmknK7i18BgG4WaEfolwV9yNftA3hmHcUwiA3nokqvzSCCBR8l4VLcJ3Jms3DEOk5H+78ilwaSlLqC2uKMBsgKaIC4FEIQEkU20piQESbIABBYFYIQEUU20pi6dT0HRFRmCECpiCIlNtKU8AMkuq0BSSEBguJECxpbZUmqMK9DAEIiigAm6utlRZgOyYMAgEBgoJUMbVlhpuKyATmnQg0M8Lp0D9ZK76vfbskwAXLASucA6gm3O+Z2hoaGM4HB74rwUhsw4U1dTUTO3q6urWNK2nfgpU/wyWTsGWLgt9FtA6yPHDZUswneOcrzJN0wwGg60AohOBSQL4fL5mItoIYBLnvAPA1KUV5PbPlpxVIFSw6wEUhv2XLDx9cgSyKFL2dfXa2M26rr8CwLoREPJ6vY8Ro923uYH6KYS9YaA3BtRXEvxz5HQKkmZ0DCkgNp2JoXoSgyITDv4Zwy89CRBhF+d8eyQSaQuFQoP/BoR8Pt/PqgsLTsyT4GKEixbh7pNxNEyT4J+rjAZNBU+BZD67GNZ+PYjDf8QgTEKEEcuydpimuT4YDA6PBSIAIg9XsZKtdZIjMaHhpzimlxL8C1x2CrKDO8ZMGVS0hxPAvt+jmFzKcLQtii/PiRRB7J73AjDzQSQBVlRLJZtvFnIjGWzTRROdwxz+RcW5U5CZjhRMliLbTgxi66GrIPAnOzo6duYF0DStdW45zfp0kcve+WTCmQiwvTUG/50lGbMXSjhGzFYlWxGJYBYzzN8QxMAwP6Lr+n1jKbCLgNVnH3TDnTYZoTcBTHM78mfOLj1jsUdkGDPVx1FR6L/GH8LR05FewzCq8wJ4PJ5GENu3bXExlnsc0+UMOFqURnNvb1TXgTgHGKHk+r19+Pjbgbiu6668ALW1tSWyLHfNV6Wb9jeUpdOQabCcM80FmQrufDa/H8JnRwcihmGU5gUQDV6v9w2T07OHVk7G3EpRfMRsc8ifltmRPvM5HdxRxMWw4sUgfm2Ltum6Pns8gGoiunh7reL+qLEcYBlmy8xz+ru9WpKQqRRkzl4mDDPCnEcviLrwgWEYq8cEEI2apr0cN/nzbz1SjodmFdkBsmXOhsmSPL1KGGHv9wPYsKVXLMPGjo6O/eMCCC8oivKbW0bdV80qasqyCtA/ggkFcL1nRB9GiCuEJU+1o+evRKeu6+IUHR8XQHSora1dqCjK8TpVLjqwTrWXZepO1giRmjyyJ4MDUAiv77mMd3aHRUleYxjGrjFLcXajz+d74pov35vncWF3cxVKXcz+47EM5xzdRZ+DPw5i7QtBMAlfGIZx/3gbUs73Ap/Ptw7AVs9UmXY8U42Zlc6umEyDY9DMlAhAF8O7B/rw2tuXQAznAdxhGMaVCQGIQeLlVJKkneC8rGlZOR5fNgV1Hpe9rSRnbKtiFTEcPzWELTtDOH1+GJJEJ6LR6Iru7u7weMFFe04FUgOnT58+Q5blbQAeiMYs1KgKbp1ZjAqhCBFC4ThOnY2gr9+EIrOrnPNXDcN4c6zdLxtqTIBUZ03TZluW1cgYW8I5v4WIKpy2EIDTnPPDjLEP29vbxcnohq6/AfS02zDq/HSrAAAAAElFTkSuQmCC") 6 3, pointer !important;
+      }
+    
+      html,
+      body,
+      body select,
+      body .sweezy-custom-cursor-default-hover {
+        cursor: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAABOxJREFUWEe913tsFEUcB/Dv7O3ttZRSykNNc7R3hsQokiCiYjCYEEgqKCH2dRI1EjBCFGMI8Ifx+YftVTQ+ImI0MSYaIkT+4A95KIaIihJDiVZ8BMnO9q4tpcBBH3e93Z356dzulRZK6JNJLreb3ZvfZ38z85tbFo1G1xHRNgDtjLGYaZq/4wY2Fo1Gu6IVoeJznTa609Tluu7DiUTihxtlUAAnVjVNX1M9DbH1JlIX3bQkqrYsa/+NQHiAR0v1+mduRuKCi+rnODrPuw6Ax03T3D3RCA+wqlSvf/omQBLO9UrUbrJgttqSiJ63LGv7RCJygLpHpuoNaz0ABKHHJqx+JYnmf/tARC9ZlvXGRCE8wIqpesOamR7A9RAZQXjqzXYcO5kBiN6yLGvLRCAUwI4tLwnWPzEjFxgC3rckuJKwYUcnvj3eC8bwGed8nbo6nhAFyMYqS4z61dN9gJeB/IcIeHHnBez8qQeahr2c8zoA2fFC5AB1y6YYDbFpgwGunwmFIUJ8/yV8+F0P9AA7lE6nV3V0dPSOB8IDLCk2Gmp9gD8HchnIH6tvSdh+NI3Gg10IaDjmOM6K1tbW82NFeIAHi42GqqleBgYGveoc2H0yg61fd4Np+Mt13WXJZLJ1LIgcoHbxZCO+smQIAABXetNOwXLHhH3cwcZ93ZAAF0IsTSQSp0eL8AAPFBnx5UMArsqGB1CY788IrPumR5nUJlY52k3MAywsMuKVxVdnYKjhyGfCJZxISTx5OINeiYuu664czSbmAe6ZZMSXTb4MuFZg9fSOv0Rz90ic6ibEjmZxwaE0gCrO+YGRDIcHmF9oxJdM9ieg9Md7QKCBoCGOExmJmiYXZ23YUsrVlmXtGS5CAfpq5xWG4osnDZpoyNcBNfFyafer5MBzVbr98t2RJTx2UoBnWZdpmiUjA8wtCMUXFV4O1B/QD37FKmjLEL5sE2hKSZxOAymXkJUAA0BAO+e8bESAmttDocaFBYNrQD/Cf3o/9b9eEqhrcqE2BwAJIvoDwBki6gHQJ4T4PJlMNo8McJsRalwQGpyB/H6Qn3T+8ttzVmLTKQFGtNmyrLeHG+ha9+XmQM3sYKhxnuEBCDjS4WJPQqAzLfFsRQCLivxCJAiOINz3m0RK4DjnfMF4ADI1t+oFjXMM8LTElqYsfjkvoTNkGGNOmYEpR+4KQLPzFVHi/bPAO50MRHKJZVmHx4JQGchUR/SC+0sZtpywVaHrA9AI4F0AdQL46OMoQ6XKgj8s3S7hblNTJWEf53zFWAGd04OYcSZLCGqsmYhqOed/q07D4XBhMBi05hbQzL3lAzYqQXg5peGLHo2klHe2tLT8OVoEKy8vr9E07XUAP9u2vbGtrU1VtP4WiURe/X9qvLY3LDE/kF+WhDYHWJgKIUD0Ked87agB1/thWVnZDMMwWpYWUOEnpc7lgiQIG9JBHHR1Vf0ilmW1X6+voa7nFvP1WiQS2eGCrf+xNIsK8ndEATS7DA/ZhTAYtpqmqV7vRtyGBQiHw7N1Xf8nZgitIWj3/313BDBbFkEjvMc5f2HE0eFVz2G1aDT6lUZUtTPYh3tJ5BDbyMAHFIIGinHOdw2roytuGjagoqIiyhg7KsFuuQMCl8DQCk0FP+AvRTmhANX5rFmzygKBwGYAc1SRIqJDnHP16qbeJUfV/gOiekhOazMx5QAAAABJRU5ErkJggg==") 1 1, auto !important;
+      }
+    </style><style type="text/css">@font-face {
+  font-family: "xm-iconfont";
+  src: url('//at.alicdn.com/t/font_792691_ptvyboo0bno.eot?t=1574048839056');
+  /* IE9 */
+  src: url('//at.alicdn.com/t/font_792691_ptvyboo0bno.eot?t=1574048839056#iefix') format('embedded-opentype'), /* IE6-IE8 */ url('data:application/x-font-woff2;charset=utf-8;base64,d09GMgABAAAAAAksAAsAAAAAEYAAAAjeAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHEIGVgCEUgqTXI8lATYCJAM0CxwABCAFhG0HgTwbZQ4jEbaCkVIj+4sD3sS6BFAp9ka91ulVG4leTC/+h+3V+zyRYCTyREKkcZ+D5/u137lPdveLGJBMunoiNPOQPBMq0/FQtEKIkMRDZng69d+hOiQumAr7bJdBOEzMTU77s78mhbI58aCg7ebCs4LBTgCk+cD/4ZqWUHebipp7al3tyKOjwCV/hVyw9PdzaktxI7IMQs26/1N8gV4DI0bVut3UhCaflGGgwM3oTXg1IfRMbCsmrEnriJVeYM2eXHII4KdMMzL4OoACHgZBCTasITcReDUBE8kWPLMTCGoQaDV+eKpUPQI49r8vP6BTPIDCaiBSml3oOQX0voNPebv/u2P0AUfP1w0s5EADzYBZsNdByylo2eVq/NtRdgFpovQR5x2CIwmIZeik6/u0T/m/A7RJP00sCmmyksj/kwc+LC5BFBqDEMDDjwPiANDB9MpJTXwHmsO3YyBwWDA4OFwwJLRcRgAOBUYMDg0mHRwGTAYozsV0AgWYruDwwExDHfzwKWf4OurQ9jzQDtoF+wpistfBfluQ5bQiiJa4ZQoKhShLiMayBbyg05AIkYBoIBJEEApQy/FwYv4HchADIUBXl61dW6mpwIgyp7p8PrHddieSjhY9oqTxyPB/FGNYDklpfYh8VtaoqSgb0bKoGB17CuVUp9Ll2nS2UpNGMSw9hyirA7C6+QLyByIQS0sSSmxvArC5odZmYZMxZSiBR5OkQl0uiufxMH5eL8t3u0d4XKyuq6EMdcpNe2+oXA8p9yPa+4T1PM7+A54tc7tpl2vcAHAftnhZj2chy1CyaCRFsyMqQ5nkNnskEt2yxxZinPsOZjFm4+XWvKqLkfCGS1k4MNP82isxSMf7ZsGYvQVCNAeSSVtzWCxRdXGxyZlA2CvCEevuO7y9M2z2NWH8icydzq/qAJSp1lGvDWFp6Nw3xChJowPD+76nU+upQk6Kw9jI0Rgym9Ct8VlxMI3CSIaDCZja5tDYt0/EYra4tn0Kp3v8Rdezk8svcy1mKhoSvNcZz3LKlUe777Gmval0s7bzAc0k13LGk896V9DuvNn34N0ebKgItkQgOomuJtgQPChNI4cwa7CEWCvfk5QjJFlem6i3SfVShWi5LTFRG+JwdCNpSqbpRFwrtb1TbcRkJi/AbJJQOmfCdnswLNGVM7qqSRO1zO0Q0j5Vr3cYQ07HB0MX6KoIZhx+D9Djs2C5bXtVwvbgJHtSCIL7hjFJme4sZDdS5IlJdKUO1Qt8opn0trBafz3AX933kmCRgyMEWGZjMAkRKhwmIHJGR4ruwFCdWKYzrap2R/mvd2UKajzRAZu88pGAD90Y+02kTFCKrBSXwGGJ3wRcPCdIppTxSmHOfESRwIli0S5J/8AYDCxTGh4XZua4xvfvGx320rDK2qA8g5FlS7pWNLx71+BwgA/KZ5I0aeKmNeCNoNPl8qNHu8uHHzqaKc86fHi4vPuRI4ny+I/vjxw+clh4HXVCFvVnVFx07EHZwVhSRliTTMWSEi0h6YuS6DxCRmiin0B3L4ry6cvR0ijYexFdBL3wGQM0YOrUAZCBkLOBBtQ+xdk7omfgUv+u++admyUeXduyxLM+r/+49rPfhgEZor6GymToNYksNsZyC7ntwAH0928UpgMpxpF0ydNlsMMBw7QsxTCmu0Hf3F+/+vb99Yumhb+e9R0LBNm+4O+hu7lQ5bGjI9j5G88qQ5SLFyuEC7cwd25xoYo2j4eA4bhpM7TZhPtmc+uhVEVSMYXLWh0bfjI8dvUpvDUocPZmU4kwwOfc83wB5wPehrpD3waApbwW+fgRrZXcxw+mB/3woZT+8JFMYwRMIy2k/18qhqcKpjYeYSnIACaUoRDu0e3kQFh98R5fiI8oJqwwGZSJDSbehLzZs7zIeWTQ4UGOIs2c4j2/Q/tn7n7j9juO33On6WhURCT/wO6Y3QdmWFY0Ef6JUeGRggO7ZbtaZlh5RYKWXbLPBLc3l/5h4A0mu3ZXTZ+u6t6VHMAzZhxak50T+24NnRuaOmehRkXlqVR5lIpuwezUUDUdCuJysv8Z/0/8uNE1s7jIJIubFWnI/x7g4nAZx79yYpFoAOU3a9iwT1O/GxUxPY0ljVPv9EukI3qNrl/So2YfzasqHCroNjS0+w0tlPlsYfC6v/01ixquizJH1Kd/VK+OS3iS3rTJWmqsMPdU3B3oFyC9RSumWE/0gG36IjTysfH51IJ/5oOgNYu6p4yb5Fdufhr/Kjtu0oSyYP/WJQrz35aNFnMhtFcwb55NlNnH8Wdu1b+XZA9zqlZrhdPo/V3uBhiUlQ66h0LhbAmFYIncdFOpVMh6Fl7peqy5Z2ZdQBITO2x1Asj1dRFjIBMC3hbuUh8Ooc4W03EjAdo8UL/t0oUfyU8630bmMcw/vqDNAsC9BQD4OqCgH+ljy0UhJB8AAJA+8EmArxk5gnRLik90AElf8rBm+IMvBTWnucb3+0o0ARk+r0ZBv8sU01nnSmP45/H8Dp8C8X+iE9e+ZvXymK/sQJ5/DuqhYKebPnKmPqLYuDcIMWS2/Rjxp2s8Do821LVn6A/xMK1RKvBLK5gyDsZ5uQ6bYusmx2yqLFe4lECHDPcFhojmckuAbnCI6Cn308RI6AAJdtCICQLQyBHKhSgX5YowN6BBPIEB8VxuSfNncpAuutzPnCSiDHDEo+DsKQBPoJi4MpRktepIs2zjO5h84IEMM3ffECKSZU1ZHxfewEI4h494MuuUNNOBjuw18QKHAzEXaAcylS3m3baq9MpnKenYmfEUgCdbXTHEtTVKsvruNGv9/DuYfOAhcuKu9TeEiA9nNJTUDOUbbVkn3sv2eDJrEnVrpvcHOjJeqRsOcpYYLuxoBzKVtCOm3ZaKbtJcurw+e/zN6c7Pd6r4gqUo0WLEiiOueOITvwQkKCEJM9nO3F60y5HkqLhdqUyXZtK3lqwReQ+G40O92UhOt0x/KmKM+u7LTPMzoEBOCYtiUPfSjODiuFXjSDm2idzAoc4Tj9bs2eJYDOU7HQA=') format('woff2'), url('//at.alicdn.com/t/font_792691_ptvyboo0bno.woff?t=1574048839056') format('woff'), url('//at.alicdn.com/t/font_792691_ptvyboo0bno.ttf?t=1574048839056') format('truetype'), /* chrome, firefox, opera, Safari, Android, iOS 4.2+ */ url('//at.alicdn.com/t/font_792691_ptvyboo0bno.svg?t=1574048839056#iconfont') format('svg');
+  /* iOS 4.1- */
+}
+.xm-iconfont {
+  font-family: "xm-iconfont" !important;
+  font-size: 16px;
+  font-style: normal;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+.xm-icon-quanxuan:before {
+  content: "\e62c";
+}
+.xm-icon-caidan:before {
+  content: "\e610";
+}
+.xm-icon-fanxuan:before {
+  content: "\e837";
+}
+.xm-icon-pifu:before {
+  content: "\e668";
+}
+.xm-icon-qingkong:before {
+  content: "\e63e";
+}
+.xm-icon-sousuo:before {
+  content: "\e600";
+}
+.xm-icon-danx:before {
+  content: "\e62b";
+}
+.xm-icon-duox:before {
+  content: "\e613";
+}
+.xm-icon-close:before {
+  content: "\e601";
+}
+.xm-icon-expand:before {
+  content: "\e641";
+}
+.xm-icon-banxuan:before {
+  content: "\e60d";
+}
+</style><style type="text/css">@-webkit-keyframes xm-upbit {
+  from {
+    -webkit-transform: translate3d(0, 30px, 0);
+    opacity: 0.3;
+  }
+  to {
+    -webkit-transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
+}
+@keyframes xm-upbit {
+  from {
+    transform: translate3d(0, 30px, 0);
+    opacity: 0.3;
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
+}
+@-webkit-keyframes loader {
+  0% {
+    -webkit-transform: rotate(0deg);
+    transform: rotate(0deg);
+  }
+  100% {
+    -webkit-transform: rotate(360deg);
+    transform: rotate(360deg);
+  }
+}
+@keyframes loader {
+  0% {
+    -webkit-transform: rotate(0deg);
+    transform: rotate(0deg);
+  }
+  100% {
+    -webkit-transform: rotate(360deg);
+    transform: rotate(360deg);
+  }
+}
+xm-select {
+  background-color: #FFF;
+  position: relative;
+  border: 1px solid #E6E6E6;
+  border-radius: 2px;
+  display: block;
+  width: 100%;
+  cursor: pointer;
+  outline: none;
+}
+xm-select * {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-size: 14px;
+  font-weight: 400;
+  text-overflow: ellipsis;
+  user-select: none;
+  -ms-user-select: none;
+  -moz-user-select: none;
+  -webkit-user-select: none;
+}
+xm-select:hover,
+xm-select:focus {
+  border-color: #C0C4CC;
+}
+xm-select > .xm-tips {
+  color: #999999;
+  padding: 0 10px;
+  position: absolute;
+  display: flex;
+  height: 100%;
+  align-items: center;
+}
+xm-select > .xm-icon {
+  display: inline-block;
+  overflow: hidden;
+  position: absolute;
+  width: 0;
+  height: 0;
+  right: 10px;
+  top: 50%;
+  margin-top: -3px;
+  cursor: pointer;
+  border: 6px dashed transparent;
+  border-top-color: #C2C2C2;
+  border-top-style: solid;
+  transition: all 0.3s;
+  -webkit-transition: all 0.3s;
+}
+xm-select > .xm-icon-expand {
+  margin-top: -9px;
+  transform: rotate(180deg);
+}
+xm-select > .xm-label.single-row {
+  position: absolute;
+  top: 0;
+  bottom: 0px;
+  left: 0px;
+  right: 30px;
+  overflow: auto hidden;
+}
+xm-select > .xm-label.single-row .scroll {
+  overflow-y: hidden;
+}
+xm-select > .xm-label.single-row .label-content {
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+xm-select > .xm-label.auto-row .label-content {
+  flex-wrap: wrap;
+  padding-right: 30px !important;
+}
+xm-select > .xm-label.auto-row .xm-label-block > span {
+  white-space: unset;
+  height: 100%;
+}
+xm-select > .xm-label .scroll .label-content {
+  display: flex;
+  padding: 3px 10px;
+}
+xm-select > .xm-label .xm-label-block {
+  display: flex;
+  position: relative;
+  padding: 0px 5px;
+  margin: 2px 5px 2px 0;
+  border-radius: 3px;
+  align-items: baseline;
+  color: #FFF;
+}
+xm-select > .xm-label .xm-label-block > span {
+  display: flex;
+  color: #FFF;
+  white-space: nowrap;
+}
+xm-select > .xm-label .xm-label-block > i {
+  color: #FFF;
+  margin-left: 8px;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+}
+xm-select > .xm-label .xm-label-block.disabled {
+  background-color: #C2C2C2 !important;
+  cursor: no-drop !important;
+}
+xm-select > .xm-label .xm-label-block.disabled > i {
+  cursor: no-drop !important;
+}
+xm-select > .xm-body {
+  position: absolute;
+  left: 0;
+  top: 42px;
+  padding: 5px 0;
+  z-index: 999;
+  width: 100%;
+  min-width: fit-content;
+  border: 1px solid #E6E6E6;
+  background-color: #fff;
+  border-radius: 2px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12);
+  animation-name: xm-upbit;
+  animation-duration: 0.3s;
+  animation-fill-mode: both;
+}
+xm-select > .xm-body .scroll-body {
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+xm-select > .xm-body .scroll-body::-webkit-scrollbar {
+  width: 8px;
+}
+xm-select > .xm-body .scroll-body::-webkit-scrollbar-track {
+  -webkit-border-radius: 2em;
+  -moz-border-radius: 2em;
+  -ms-border-radius: 2em;
+  border-radius: 2em;
+  background-color: #FFF;
+}
+xm-select > .xm-body .scroll-body::-webkit-scrollbar-thumb {
+  -webkit-border-radius: 2em;
+  -moz-border-radius: 2em;
+  -ms-border-radius: 2em;
+  border-radius: 2em;
+  background-color: #C2C2C2;
+}
+xm-select > .xm-body.up {
+  top: auto;
+  bottom: 42px;
+}
+xm-select > .xm-body.relative {
+  position: relative;
+  display: block !important;
+  top: 0;
+  box-shadow: none;
+  border: none;
+  animation-name: none;
+  animation-duration: 0;
+  min-width: 100%;
+}
+xm-select > .xm-body .xm-group {
+  cursor: default;
+}
+xm-select > .xm-body .xm-group-item {
+  display: inline-block;
+  cursor: pointer;
+  padding: 0 10px;
+  color: #999;
+  font-size: 12px;
+}
+xm-select > .xm-body .xm-option {
+  display: flex;
+  align-items: center;
+  position: relative;
+  padding: 0 10px;
+  cursor: pointer;
+}
+xm-select > .xm-body .xm-option-icon {
+  color: transparent;
+  display: flex;
+  border: 1px solid #E6E6E6;
+  border-radius: 3px;
+  justify-content: center;
+  align-items: center;
+}
+xm-select > .xm-body .xm-option-icon.xm-custom-icon {
+  color: unset;
+  border: unset;
+}
+xm-select > .xm-body .xm-option-icon-hidden {
+  margin-right: -10px;
+}
+xm-select > .xm-body .xm-option-icon.xm-icon-danx {
+  border-radius: 100%;
+}
+xm-select > .xm-body .xm-option-content {
+  display: flex;
+  position: relative;
+  padding-left: 15px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  ;
+  width: calc(100% - 20px);
+}
+xm-select > .xm-body .xm-option.hide-icon .xm-option-content {
+  padding-left: 0;
+}
+xm-select > .xm-body .xm-option.selected.hide-icon .xm-option-content {
+  color: #FFF !important;
+}
+xm-select > .xm-body .xm-option .loader {
+  width: 0.8em;
+  height: 0.8em;
+  margin-right: 6px;
+  color: #C2C2C2;
+}
+xm-select > .xm-body .xm-select-empty {
+  text-align: center;
+  color: #999;
+}
+xm-select > .xm-body .disabled {
+  cursor: no-drop;
+}
+xm-select > .xm-body .disabled:hover {
+  background-color: #FFF;
+}
+xm-select > .xm-body .disabled .xm-option-icon {
+  border-color: #C2C2C2 !important;
+}
+xm-select > .xm-body .disabled .xm-option-content {
+  color: #C2C2C2 !important;
+}
+xm-select > .xm-body .disabled.selected > .xm-option-icon {
+  color: #C2C2C2 !important;
+}
+xm-select > .xm-body .xm-search {
+  background-color: #FFF !important;
+  position: relative;
+  padding: 0 10px;
+  margin-bottom: 5px;
+  cursor: pointer;
+}
+xm-select > .xm-body .xm-search > i {
+  position: absolute;
+  color: ;
+}
+xm-select > .xm-body .xm-search-input {
+  border: none;
+  border-bottom: 1px solid #E6E6E6;
+  padding-left: 27px;
+  cursor: text;
+}
+xm-select > .xm-body .xm-paging {
+  padding: 0 10px;
+  display: flex;
+  margin-top: 5px;
+}
+xm-select > .xm-body .xm-paging > span:first-child {
+  border-radius: 2px 0 0 2px;
+}
+xm-select > .xm-body .xm-paging > span:last-child {
+  border-radius: 0 2px 2px 0;
+}
+xm-select > .xm-body .xm-paging > span {
+  display: flex;
+  flex: auto;
+  justify-content: center;
+  vertical-align: middle;
+  margin: 0 -1px 0 0;
+  background-color: #fff;
+  color: #333;
+  font-size: 12px;
+  border: 1px solid #e2e2e2;
+  flex-wrap: nowrap;
+  width: 100%;
+  overflow: hidden;
+  min-width: 50px;
+}
+xm-select > .xm-body .xm-toolbar {
+  padding: 0 10px;
+  display: flex;
+  margin: -3px 0;
+  cursor: default;
+}
+xm-select > .xm-body .xm-toolbar .toolbar-tag {
+  cursor: pointer;
+  display: flex;
+  margin-right: 20px;
+  color: ;
+  align-items: baseline;
+}
+xm-select > .xm-body .xm-toolbar .toolbar-tag:hover {
+  opacity: 0.8;
+}
+xm-select > .xm-body .xm-toolbar .toolbar-tag:active {
+  opacity: 1;
+}
+xm-select > .xm-body .xm-toolbar .toolbar-tag > i {
+  margin-right: 2px;
+  font-size: 14px;
+}
+xm-select > .xm-body .xm-toolbar .toolbar-tag:last-child {
+  margin-right: 0;
+}
+xm-select > .xm-body .xm-body-custom {
+  line-height: initial;
+  cursor: default;
+}
+xm-select > .xm-body .xm-body-custom * {
+  box-sizing: initial;
+}
+xm-select > .xm-body .xm-tree {
+  position: relative;
+}
+xm-select > .xm-body .xm-tree-icon {
+  display: inline-block;
+  margin-right: 3px;
+  cursor: pointer;
+  border: 6px dashed transparent;
+  border-left-color: #C2C2C2;
+  border-left-style: solid;
+  transition: all 0.3s;
+  -webkit-transition: all 0.3s;
+  z-index: 2;
+  visibility: hidden;
+}
+xm-select > .xm-body .xm-tree-icon.expand {
+  margin-top: 3px;
+  margin-right: 5px;
+  margin-left: -2px;
+  transform: rotate(90deg);
+}
+xm-select > .xm-body .xm-tree-icon.xm-visible {
+  visibility: visible;
+}
+xm-select > .xm-body .xm-tree .left-line {
+  position: absolute;
+  left: 13px;
+  width: 0;
+  z-index: 1;
+  border-left: 1px dotted #c0c4cc !important;
+}
+xm-select > .xm-body .xm-tree .top-line {
+  position: absolute;
+  left: 13px;
+  height: 0;
+  z-index: 1;
+  border-top: 1px dotted #c0c4cc !important;
+}
+xm-select > .xm-body .xm-tree .xm-tree-icon + .top-line {
+  margin-left: 1px;
+}
+xm-select > .xm-body .scroll-body > .xm-tree > .xm-option > .top-line,
+xm-select > .xm-body .scroll-body > .xm-option > .top-line {
+  width: 0 !important;
+}
+xm-select > .xm-body .xm-cascader-box {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  padding: 5px 0;
+  border: 1px solid #E6E6E6;
+  background-color: #fff;
+  border-radius: 2px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12);
+  margin: -1px;
+}
+xm-select > .xm-body .xm-cascader-box::before {
+  content: ' ';
+  position: absolute;
+  width: 0;
+  height: 0;
+  border: 6px solid transparent;
+  border-right-color: #E6E6E6;
+  top: 10px;
+  left: -12px;
+}
+xm-select > .xm-body .xm-cascader-box::after {
+  content: ' ';
+  position: absolute;
+  width: 0;
+  height: 0;
+  border: 6px solid transparent;
+  border-right-color: #fff;
+  top: 10px;
+  left: -11px;
+}
+xm-select > .xm-body .xm-cascader-scroll {
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+xm-select > .xm-body.cascader {
+  width: unset;
+  min-width: unset;
+}
+xm-select > .xm-body.cascader .xm-option-content {
+  padding-left: 8px;
+}
+xm-select > .xm-body.cascader .disabled .xm-right-arrow {
+  color: #C2C2C2 !important;
+}
+xm-select > .xm-body.cascader .hide-icon.disabled .xm-right-arrow {
+  color: #999 !important;
+}
+xm-select .xm-input {
+  cursor: pointer;
+  border-radius: 2px;
+  border-width: 1px;
+  border-style: solid;
+  border-color: #E6E6E6;
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  background-color: #FFF;
+  line-height: 1.3;
+  padding-left: 10px;
+  outline: 0;
+  user-select: text;
+  -ms-user-select: text;
+  -moz-user-select: text;
+  -webkit-user-select: text;
+}
+xm-select .dis {
+  display: none;
+}
+xm-select .loading {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+xm-select .loader {
+  border: 0.2em dotted currentcolor;
+  border-radius: 50%;
+  -webkit-animation: 1s loader linear infinite;
+  animation: 1s loader linear infinite;
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  color: inherit;
+  vertical-align: middle;
+  pointer-events: none;
+}
+xm-select .xm-select-default {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border: none;
+  visibility: hidden;
+}
+xm-select .xm-select-disabled {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  cursor: no-drop;
+  z-index: 2;
+  opacity: 0.3;
+  background-color: #FFF;
+}
+xm-select .item--divided {
+  border-top: 1px solid #ebeef5;
+  width: calc(100% - 20px);
+  cursor: initial;
+}
+xm-select .xm-right-arrow {
+  position: absolute;
+  color: ;
+  right: 5px;
+  top: -1px;
+  font-weight: 700;
+  transform: scale(0.6, 1);
+}
+xm-select .xm-right-arrow::after {
+  content: '>';
+}
+xm-select[size='large'] {
+  min-height: 40px;
+  line-height: 40px;
+}
+xm-select[size='large'] .xm-input {
+  height: 40px;
+}
+xm-select[size='large'] .xm-label .scroll .label-content {
+  line-height: 34px;
+}
+xm-select[size='large'] .xm-label .xm-label-block {
+  height: 30px;
+  line-height: 30px;
+}
+xm-select[size='large'] .xm-body .xm-option .xm-option-icon {
+  height: 20px;
+  width: 20px;
+  font-size: 20px;
+}
+xm-select[size='large'] .xm-paging > span {
+  height: 34px;
+  line-height: 34px;
+}
+xm-select[size='large'] .xm-tree .left-line {
+  height: 100%;
+  bottom: 20px;
+}
+xm-select[size='large'] .xm-tree .left-line-group {
+  height: calc(100% - 40px);
+}
+xm-select[size='large'] .xm-tree .xm-tree-icon.xm-hidden + .top-line {
+  top: 19px;
+}
+xm-select[size='large'] .item--divided {
+  margin: 10px;
+}
+xm-select {
+  min-height: 36px;
+  line-height: 36px;
+}
+xm-select .xm-input {
+  height: 36px;
+}
+xm-select .xm-label .scroll .label-content {
+  line-height: 30px;
+}
+xm-select .xm-label .xm-label-block {
+  height: 26px;
+  line-height: 26px;
+}
+xm-select .xm-body .xm-option .xm-option-icon {
+  height: 18px;
+  width: 18px;
+  font-size: 18px;
+}
+xm-select .xm-paging > span {
+  height: 30px;
+  line-height: 30px;
+}
+xm-select .xm-tree .left-line {
+  height: 100%;
+  bottom: 18px;
+}
+xm-select .xm-tree .left-line-group {
+  height: calc(100% - 36px);
+}
+xm-select .xm-tree .xm-tree-icon.xm-hidden + .top-line {
+  top: 17px;
+}
+xm-select .item--divided {
+  margin: 9px;
+}
+xm-select[size='small'] {
+  min-height: 32px;
+  line-height: 32px;
+}
+xm-select[size='small'] .xm-input {
+  height: 32px;
+}
+xm-select[size='small'] .xm-label .scroll .label-content {
+  line-height: 26px;
+}
+xm-select[size='small'] .xm-label .xm-label-block {
+  height: 22px;
+  line-height: 22px;
+}
+xm-select[size='small'] .xm-body .xm-option .xm-option-icon {
+  height: 16px;
+  width: 16px;
+  font-size: 16px;
+}
+xm-select[size='small'] .xm-paging > span {
+  height: 26px;
+  line-height: 26px;
+}
+xm-select[size='small'] .xm-tree .left-line {
+  height: 100%;
+  bottom: 16px;
+}
+xm-select[size='small'] .xm-tree .left-line-group {
+  height: calc(100% - 32px);
+}
+xm-select[size='small'] .xm-tree .xm-tree-icon.xm-hidden + .top-line {
+  top: 15px;
+}
+xm-select[size='small'] .item--divided {
+  margin: 8px;
+}
+xm-select[size='mini'] {
+  min-height: 28px;
+  line-height: 28px;
+}
+xm-select[size='mini'] .xm-input {
+  height: 28px;
+}
+xm-select[size='mini'] .xm-label .scroll .label-content {
+  line-height: 22px;
+}
+xm-select[size='mini'] .xm-label .xm-label-block {
+  height: 18px;
+  line-height: 18px;
+}
+xm-select[size='mini'] .xm-body .xm-option .xm-option-icon {
+  height: 14px;
+  width: 14px;
+  font-size: 14px;
+}
+xm-select[size='mini'] .xm-paging > span {
+  height: 22px;
+  line-height: 22px;
+}
+xm-select[size='mini'] .xm-tree .left-line {
+  height: 100%;
+  bottom: 14px;
+}
+xm-select[size='mini'] .xm-tree .left-line-group {
+  height: calc(100% - 28px);
+}
+xm-select[size='mini'] .xm-tree .xm-tree-icon.xm-hidden + .top-line {
+  top: 13px;
+}
+xm-select[size='mini'] .item--divided {
+  margin: 7px;
+}
+.layui-form-pane xm-select {
+  margin: -1px -1px -1px 0;
+}
+</style><style type="text/css">
+		[mt_node=trans_loading]::after{
+		content: '';
+		vertical-align: middle !important;
+		width: 1em !important;
+		height: 1em !important;
+		display: inline-block !important;
+		margin: 0 4px !important;
+		border: 2px rgba(0, 0, 0, 0.25) solid !important;
+		border-top: 2px rgba(0, 0, 0, 1) solid !important;
+		border-radius: 50% !important;
+		padding: 0 !important;
+		-webkit-animation: immersive-translate-loading-animation 0.6s infinite linear !important;
+		animation: immersive-translate-loading-animation 0.6s infinite linear !important;
+		}
+
+		@keyframes immersive-translate-loading-animation {
+			from {
+				transform: rotate(0deg,0deg,0deg);
+			}
+			to {
+				transform: rotate(359deg,0deg,0deg);
+			}
+		}
+	</style><style type="text/css">[mt_node^=trans]{display: none !important;}</style></head>
+	<body>
+		<div align="center">
+			<h2><a href="https://pdos.csail.mit.edu/6.824/index.html">6.5840</a> - Spring 2025</h2>
+			<h1>6.5840 Lab 5: Sharded Key/Value Service</h1>
+
+			<p>
+  <b><a href="https://pdos.csail.mit.edu/6.824/labs/collab.html">Collaboration policy</a></b> //
+  <b><a href="https://pdos.csail.mit.edu/6.824/labs/submit.html">Submit lab</a></b> //
+  <b><a href="https://pdos.csail.mit.edu/6.824/labs/go.html">Setup Go</a></b> //
+  <b><a href="https://pdos.csail.mit.edu/6.824/labs/guidance.html">Guidance</a></b> //
+  <b><a href="https://piazza.com/mit/spring2025/65840">Piazza</a></b>
+</p>
+
+		</div>
+		<hr>
+
+                <h3>Introduction</h3>
+
+                <p>
+                  You can either do a <a href="https://pdos.csail.mit.edu/6.824/project.html">final project</a> based
+                  on your own ideas, or this lab.
+
+		</p><p>
+		In this lab you'll build a key/value storage system
+		that "shards," or partitions, the keys over a set of
+                Raft-replicated key/value server groups
+		(shardgrps).  A shard is a subset of the
+		key/value pairs; for example, all the keys starting
+		with "a" might be one shard, all the keys starting
+		with "b" another, etc. The reason for sharding is
+		performance. Each shardgrp 
+		handles puts and gets for just a few of
+		the shards, and the shardgrps operate in parallel;
+		thus total system throughput (puts and gets per unit
+		time) increases in proportion to the number of
+		shardgrps.
+
+                </p><p>
+                  
+                <img src="./6.5840 Lab 5_ Sharded Key_Value Service_files/shardkv.png" alt="shardkv design" width="400" class="center">
+
+		</p><p>The sharded key/value service has the components shown
+		above. Shardgrps (shown with blue squares) store
+		shards with keys: shardgrp 1 holds a shard storing key
+		"a", and shardgrp 2 holds a shard storing key
+		"b". Clients of the sharded key/value service interact
+		with the service through a clerk (shown with a green
+		circle), which implements <tt>Get</tt>
+		and <tt>Put</tt> methods.  To find the shardgrp for a
+		key passed to <tt>Put</tt>/<tt>Get</tt>, the clerk
+		gets the configuration from the kvsrv (shown with a
+		black square), which you implemented in Lab 2. The
+		configuration (not shown) describes the mapping from
+		shards to shardgrps (e.g., shard 1 is served by
+		shardgrp 3).
+
+                </p><p>An administrator (i.e., the tester) uses another
+                client, the controller (shown with a purple circle),
+                to add/remove shardgrps from the cluster and
+                update which shardgrp should serve a shard. The
+                controller has one main
+                method: <tt>ChangeConfigTo</tt>, which takes as
+                argument a new configuration and changes the system
+                from the current configuration to the new
+                configuration; this involves moving shards to new
+                shardgrps that are joining the system and moving
+                shards away from shardgrps that are leaving the system.  To
+                do so the controller 1) makes RPCs
+                (<tt>FreezeShard</tt>, <tt>InstallShard</tt>,
+                and <tt>DeleteShard</tt>) to shardgrps, and 2) updates the
+                configuration stored in kvsrv.
+                                                      
+		</p><p> The reason for the controller is that a sharded
+		storage system must be able to shift shards among
+		shardgrps. One reason is that some shardgrps may
+		become more loaded than others, so that shards need to
+		be moved to balance the load. Another reason is that
+		shardgrps may join and leave the system: new shardgrps
+		may be added to increase capacity, or existing
+		shardgrps may be taken offline for repair or
+		retirement.
+
+		</p><p> The main challenges in this lab will be ensuring
+		linearizability of
+                <tt>Get</tt>/<tt>Put</tt> operations while handling 1)
+                  changes in the assignment of shards to shardgrps,
+                and 2) recovering from a controller that fails or is partitioned
+                during <tt>ChangeConfigTo</tt>.
+                
+                </p><ol>
+                <li><tt>ChangeConfigTo</tt> moves shards from one
+		shardgrp to another. A risk is that some clients might
+		use the old shardgrp while other clients use the new
+		shardgrp, which could break linearizability.  You will
+		need to ensure that at most one shardgrp is serving
+		requests for each shard at any one time.
+                
+                </li><li>If <tt>ChangeConfigTo</tt> fails while
+                reconfiguring, some shards may be inaccessible if they
+                have started but not completed moving from one
+                shardgrp to another.  To make forward progress, the
+                tester starts a new controller, and your job is to
+                ensure that the new one completes the reconfiguration
+                that the previous controller started.
+
+                </li></ol>
+     
+		<p class="note">
+		This lab uses "configuration" to refer to the
+		assignment of shards to shardgrps. This is not the
+		same as Raft cluster membership changes. You don't
+		have to implement Raft cluster membership changes.
+
+                </p><p class="note"> A shardgrp server is a member of only
+                  a single shardgrp. The set of servers in a
+                  given shardgrp will never change.
+
+                </p><p class="note">
+		Only RPC may be used for interaction among clients and servers.
+		For example, different instances of your server are not allowed
+		to share Go variables or files.
+
+		</p><p>
+    In Part A, you will implement a working <tt>shardctrler</tt>,
+    which will store and retrieve configurations in a <tt>kvsrv</tt>.
+    You will also implement the <tt>shardgrp</tt>, replicated
+    with your Raft <tt>rsm</tt> package, and a corresponding 
+    <tt>shardgrp</tt> clerk. The <tt>shardctrler</tt> talks 
+    to the <tt>shardgrp</tt> clerks to move shards between
+    different groups.
+
+    </p><p>
+    In Part B, you will modify your <tt>shardctrler</tt> to handle
+    failures and partitions during config changes. In Part C,
+    you will extend your <tt>shardctrler</tt> to allow for concurrent
+    controllers without interfering with each other. Finally, in
+    Part D, you will have the opportunity to extend your solution
+    in any way you like.
+
+		</p><p>
+		This lab's sharded key/value service follows the same
+		general design as Flat Datacenter Storage, BigTable,
+		Spanner, FAWN, Apache HBase, Rosebud, Spinnaker, and
+		many others. These systems differ in many details from
+		this lab, though, and are also typically more
+		sophisticated and capable. For example, the lab
+		doesn't evolve the sets of peers in each Raft group;
+		its data and query models are simple; and so on.
+
+		</p><p class="note">
+		  Lab 5 will use your <tt>kvsrv</tt> from Lab 2, and your
+		  <tt>rsm</tt> and <tt>Raft</tt> from Lab 4. Your Lab 5 
+      and Lab 4 must use the same <tt>rsm</tt> and <tt>Raft</tt> 
+      implementations.
+
+    </p><p class="note">
+      You may use late hours for Part A, but you may not use
+      late hours for Parts B-D.
+
+		</p><h3>Getting Started</h3>
+
+        <div class="important">
+        <p>
+        Do a <tt>git pull</tt> to get the latest lab software.
+        </p></div>
+
+		<p>
+		We supply you with tests and skeleton code
+		in <tt>src/shardkv1</tt>:
+		</p><ul>
+		  <li><tt>client.go</tt> for the shardkv clerk
+                  </li><li> <tt>shardcfg</tt> package for computing shard
+		    configurations
+		</li><li><tt>shardgrp</tt> package: for the shardgrp
+		clerk and server.
+		</li><li><tt>shardctrler</tt>
+		  package, which contains <tt>shardctrler.go</tt> with
+                  methods for the controller to change a configuration
+		  (<tt>ChangeConfigTo</tt>) and to get a
+		  configuration (<tt>Query</tt>)
+                  </li></ul>
+		<p>
+		To get up and running, execute the following commands:
+		</p><pre>$ cd ~/6.5840
+$ git pull
+...
+$ cd src/shardkv1
+$ go test -v
+=== RUN  TestInitQuery5A
+Test (5A): Init and Query ... (reliable network)...
+    shardkv_test.go:46: Static wrong null 0
+...</pre>
+
+		<h3>Part A: Moving shards <script>g("hard") </script>(<a class="hard" href="https://pdos.csail.mit.edu/6.824/labs/guidance.html">hard</a>)</h3>
+
+		<p>
+                  Your first job is to implement shardgrps and the
+                  <tt>InitConfig</tt>, <tt>Query</tt>,
+                  and <tt>ChangeConfigTo</tt> methods 
+                  when there are no failures.
+                  We have given you the code for describing a
+                  configuration, in
+                  <tt>shardkv1/shardcfg</tt>.
+                  Each <tt>shardcfg.ShardConfig</tt> has a unique
+                  identifying number, a mapping from shard number to
+                  group number, and a mapping from group number to the
+                  list of servers replicating that group.
+		  There will usually be more shards than groups
+		  (so that each group serves more than one shard), in
+		  order that load can be shifted at a fairly fine
+		  granularity.
+
+		</p><p>
+		  Implement these two methods in
+                  <tt>shardctrler/shardctrler.go</tt>:
+
+                  </p><ul>
+                  
+		<li>The <tt>InitConfig</tt> method receives the first
+		configuration, passed to it by the tester as
+                a <tt>shardcfg.ShardConfig</tt>.
+                <tt>InitConfig</tt> should store the configuration in
+                an instance of Lab 2's <tt>kvsrv</tt>.
+
+		</li><li> The <tt>Query</tt> method returns the current
+		configuration; it should read the configuration from
+                <tt>kvsrv</tt>, previously stored there by <tt>InitConfig</tt>.
+
+                  </li></ul>
+
+                  		<p class="todo">
+                   Implement <tt>InitConfig</tt> and <tt>Query</tt>, and
+                   store the configuration in <tt>kvsrv</tt>.
+		   You're done when your code passes the
+		   first test.  Note this task doesn't require any shardgrps.
+                   </p><pre>$ cd ~/6.5840/src/shardkv1
+$ go test -run TestInitQuery5A                   
+Test (5A): Init and Query ... (reliable network)...
+  ... Passed --  time  0.0s #peers 1 #RPCs     3 #Ops    0
+PASS
+ok      6.5840/shardkv1 0.197s
+$
+</pre>
+
+                    <ul class="hints">
+                      <li> Implement <tt>InitConfig</tt> and <tt>Query</tt>
+                        by storing and reading the initial
+                        configuration from <tt>kvsrv</tt>:
+                        use the <tt>Get</tt>/<tt>Put</tt> methods of 
+                        <tt>ShardCtrler.IKVClerk</tt> to talk to <tt>kvsrv</tt>,
+                        use the <tt>String</tt> method
+                        of <tt>ShardConfig</tt> to turn
+                        a <tt>ShardConfig</tt> into a string that you
+                        can pass to <tt>Put</tt>,
+                        and use the <tt>shardcfg.FromString()</tt> function to
+                        turn a string into a <tt>ShardConfig</tt>.
+                     </li></ul>
+
+		<p class="todo">
+                  Implement an initial version of <tt>shardgrp</tt> 
+                  in <tt>shardkv1/shardgrp/server.go</tt> and a corresponding 
+                  clerk in <tt>shardkv1/shardgrp/client.go</tt> by
+                  copying code from your Lab 4 <tt>kvraft</tt> solution.
+                  <br>
+                  <br>
+                  Implement a clerk in <tt>shardkv1/client.go</tt> 
+                  that uses the <tt>Query</tt> method to find the
+                  shardgrp for a key, and then talks to that
+                  shardgrp.  You're done when your code passes the
+                  <tt>Static</tt> test.
+</p><pre>$ cd ~/6.5840/src/shardkv1
+$ go test -run Static
+Test (5A): one shard group ... (reliable network)...
+  ... Passed --  time  5.4s #peers 1 #RPCs   793 #Ops  180
+PASS
+ok      6.5840/shardkv1 5.632s
+$</pre>
+
+                    <ul class="hints">
+                      <li> Copy code from your <tt>kvraft</tt> client.go and
+		        server.go for <tt>Put</tt> and <tt>Get</tt>,
+		        and any other code you need from <tt>kvraft</tt>.
+                      </li><li>
+                  The code in <tt>shardkv1/client.go</tt> provides
+                  the <tt>Put</tt>/<tt>Get</tt> clerk for the overall system: it finds out
+                  which shardgrp holds the desired key's shard by
+                  invoking the <tt>Query</tt> method,
+                  and then talks to the shardgrp that holds
+                  that shard.
+                  
+                  </li><li>
+                  Implement 
+		  <tt>shardkv1/client.go</tt>, including its <tt>Put</tt>/<tt>Get</tt> methods. 
+		  Use <tt>shardcfg.Key2Shard()</tt>
+		  to find the shard number for a key.
+		  The tester passes a
+		  <tt>ShardCtrler</tt> object to 
+		  <tt>MakeClerk</tt> in <tt>shardkv1/client.go</tt>.
+                  Retrieve the current configuration using the
+                  <tt>Query</tt> method.
+                        
+		      </li><li>To put/get a key from a shardgrp, the shardkv
+		      clerk should create a shardgrp clerk for the
+		      shardgrp by calling <tt>shardgrp.MakeClerk</tt>,
+		      passing in the servers found in the 
+		      configuration and the shardkv
+		      clerk's <tt>ck.clnt</tt>. Use the
+            <tt>GidServers()</tt> method from <tt>ShardConfig</tt> to get the group for 
+            a shard.
+
+                     </li><li><tt>shardkv1/client.go</tt>'s Put must
+                     return <tt>ErrMaybe</tt> when the reply was maybe lost, but
+                     this Put invokes <tt>shardgrp</tt>'s Put to talk
+                     a particular shardgrp.  The inner Put can signal
+                     this with an error.
+                        
+                      </li><li>Upon creation, the first shardgrp (<tt>shardcfg.Gid1</tt>)
+                        should initialize itself to own all shards.
+                        
+                    </li></ul>
+
+<p>
+  Now you should support movement of shards among groups by
+  implementing
+  the <tt>ChangeConfigTo</tt> method, which 
+  changes from an old configuration to a new configuration.  The new
+  configuration may include new shardgrps that are not present in the
+  old configuration, and may exclude shardgrps that were present
+  in the old configuration. The controller should move shards
+  (the key/value data) so that the set of shards stored by each
+  shardgrp matches the new configuration.
+
+                  </p><p>The approach we suggest for
+                moving a shard is for <tt>ChangeConfigTo</tt>
+		to first "freeze" the shard at the source
+		shardgrp, causing that shardgrp to
+		reject <tt>Put</tt>'s for keys in the moving
+		shard. Then, copy (install) the shard to the destination
+		shardgrp; then delete the frozen shard. Finally,
+		post a new configuration so that clients can find the
+		moved shard.  A nice property of this approach is that it
+		avoids any direct interactions among the shardgrps.
+		It also supports serving shards that are not affected
+		by an ongoing configuration change.
+
+                  </p><p>To be able to order changes to the configuration,
+                    each configuration has a unique
+                    number <tt>Num</tt>
+                    (see <tt>shardcfg/shardcfg.go</tt>).  The tester
+                    in Part A invokes <tt>ChangeConfigTo</tt>
+                    sequentially, and the configuration passed
+                    to <tt>ChangeConfigTo</tt> will have
+                    a <tt>Num</tt> one larger than the previous one;
+                    thus, a configuration with a higher
+                    <tt>Num</tt> is newer than one with a
+                    lower <tt>Num</tt>. 
+                    
+                  </p><p>The network may delay RPCs, and RPCs may arrive
+                    out of order at the shardgrps.  To reject old
+                    <tt>FreezeShard</tt>, <tt>InstallShard</tt>,
+                    and <tt>DeleteShard</tt> RPCs, they should
+                    include <tt>Num</tt>
+                    (see <tt>shardgrp/shardrpc/shardrpc.go</tt>), and
+                    shardgrps must remember the largest <tt>Num</tt>
+                    they have seen for each shard.
+
+		  </p><p class="todo">Implement <tt>ChangeConfigTo</tt>
+                    (in <tt>shardctrler/shardctrler.go</tt>) and
+                    extend <tt>shardgrp</tt> to support freeze,
+                    install, and delete.  <tt>ChangeConfigTo</tt>
+                    should always succeed in Part A because the tester
+                    doesn't induce failures in this part. You will
+                    need to implement
+                 <tt>FreezeShard</tt>, <tt>InstallShard</tt>, and <tt>DeleteShard</tt>
+                in <tt>shardgrp/client.go</tt>
+                and <tt>shardgrp/server.go</tt> using the RPCs in 
+                the <tt>shardgrp/shardrpc</tt> package, and reject old RPCs 
+                based on <tt>Num</tt>. You will also need modify the
+                shardkv clerk in <tt>shardkv1/client.go</tt> to
+		handle <tt>ErrWrongGroup</tt>, which a shardgrp should
+		return if it isn't reponsible for the shard.
+                <br>
+                <br>
+                You have completed this task when
+                 you pass the <tt>JoinBasic</tt> and <tt>DeleteBasic</tt> tests. These
+                 tests focus on adding shardgrps; you don't have to
+                worry about shardgrps leaving just yet.
+
+		</p><ul class="hints">
+
+                  <li> A shardgrp should respond with
+                  an <tt>ErrWrongGroup</tt> error to a
+                  client <tt>Put</tt>/<tt>Get</tt> with a key that the
+                  shardgrp isn't responsible for (i.e., for a key
+                  whose shard is not assigned to the shardgrp).  You
+                  will have to modify <tt>shardkv1/client.go</tt> to
+                  reread the configuration and retry
+                  the <tt>Put</tt>/<tt>Get</tt>.
+
+		  </li><li> Note that you will have to run <tt>FreezeShard</tt>,
+                  <tt>InstallShard</tt>, and <tt>DeleteShard</tt> through
+                  your <tt>rsm</tt> package, just like <tt>Put</tt>
+                  and <tt>Get</tt>.
+		    
+		  </li><li>You can send an entire map as your state
+        in an RPC request or reply, which may help 
+        keep the code for shard transfer simple.
+                   
+		 </li><li>If one of your RPC handlers includes in its reply
+	     	  a map (e.g. a key/value map) that's part of your
+	     	  server's state, you may get bugs due to races. The
+	     	  RPC system has to read the map in order to send it
+	     	  to the caller, but it isn't holding a lock that
+	     	  covers the map. Your server, however, may proceed to
+	     	  modify the same map while the RPC system is reading
+	     	  it. The solution is for the RPC handler to include a
+	     	  copy of the map in the reply.
+
+		 </li></ul>
+
+                  <p class="todo">Extend <tt>ChangeConfigTo</tt> to
+                    handle shard groups that leave; i.e., shardgrps
+                    that are present in the current configuration but
+                    not in the new one. Your solution should
+                    pass <tt>TestJoinLeaveBasic5A</tt> now.  (You
+                    may have handled this scenario already in the
+                    previous task, but the previous tests didn't test
+                    for shardgrps leaving.)
+
+                   </p><p class="todo"> Make your solution pass all Part A
+                 tests, which check that your sharded key/value
+                 service supports many groups joining and leaving,
+                 shardgrps restarting from snapshots, processing <tt>Get</tt>s
+                 while some shards are offline or involved in a
+                 configuration change, and linearizability when many
+                 clients interact with the service while the tester
+                 concurrently invokes the controller's <tt>ChangeConfigTo</tt> to
+                 rebalance shards.
+                   
+                                        
+		
+
+</p><pre>$ cd ~/6.5840/src/shardkv1
+$ go test -run 5A
+Test (5A): Init and Query ... (reliable network)...
+  ... Passed --  time  0.0s #peers 1 #RPCs     3 #Ops    0
+Test (5A): one shard group ... (reliable network)...
+  ... Passed --  time  5.1s #peers 1 #RPCs   792 #Ops  180
+Test (5A): a group joins... (reliable network)...
+  ... Passed --  time 12.9s #peers 1 #RPCs  6300 #Ops  180
+Test (5A): delete ... (reliable network)...
+  ... Passed --  time  8.4s #peers 1 #RPCs  1533 #Ops  360
+Test (5A): basic groups join/leave ... (reliable network)...
+  ... Passed --  time 13.7s #peers 1 #RPCs  5676 #Ops  240
+Test (5A): many groups join/leave ... (reliable network)...
+  ... Passed --  time 22.1s #peers 1 #RPCs  3529 #Ops  180
+Test (5A): many groups join/leave ... (unreliable network)...
+  ... Passed --  time 54.8s #peers 1 #RPCs  5055 #Ops  180
+Test (5A): shutdown ... (reliable network)...
+  ... Passed --  time 11.7s #peers 1 #RPCs  2807 #Ops  180
+Test (5A): progress ... (reliable network)...
+  ... Passed --  time  8.8s #peers 1 #RPCs   974 #Ops   82
+Test (5A): progress ... (reliable network)...
+  ... Passed --  time 13.9s #peers 1 #RPCs  2443 #Ops  390
+Test (5A): one concurrent clerk reliable... (reliable network)...
+  ... Passed --  time 20.0s #peers 1 #RPCs  5326 #Ops 1248
+Test (5A): many concurrent clerks reliable... (reliable network)...
+  ... Passed --  time 20.4s #peers 1 #RPCs 21688 #Ops 10500
+Test (5A): one concurrent clerk unreliable ... (unreliable network)...
+  ... Passed --  time 25.8s #peers 1 #RPCs  2654 #Ops  176
+Test (5A): many concurrent clerks unreliable... (unreliable network)...
+  ... Passed --  time 25.3s #peers 1 #RPCs  7553 #Ops 1896
+PASS
+ok      6.5840/shardkv1 243.115s
+$</pre>
+
+
+                <p class="note"> Your solution must continue serving shards
+		that are not affected by an ongoing configuration
+		change.
+
+		</p><h3>Part B: Handling a failed controller <script>g("easy")</script>(<a class="easy" href="https://pdos.csail.mit.edu/6.824/labs/guidance.html">easy</a>)</h3>
+
+                <p>The controller is a short-lived command, which an
+                  administrator invokes: it moves shards and then
+                  exits.  But, it may fail or lose network
+                  connectivity while moving shards.  The main task in
+                  this part of the lab is recovering from a controller
+                  that fails to complete
+                  <tt>ChangeConfigTo</tt>. The tester starts a new
+                  controller and invokes its <tt>ChangeConfigTo</tt>
+                  after partitioning the first controller; you have to
+                  modify the controller so that the new one finishes
+                  the reconfiguration.
+                The tester calls <tt>InitController</tt> when
+                starting a controller; you can modify that function
+                to check whether an interrupted configuration
+                change needs to be completed.
+
+              </p><p>A good approach to allowing a controller to
+                finish a reconfiguration that a previous one started
+                is to keep two configurations: a current one and a
+                next one, both stored in the controller's kvsrv.
+		When a controller starts a reconfiguration, it
+		stores the next configuration.
+                Once a controller completes the reconfiguration, it
+                makes the next configuration the current one.
+                Modify <tt>InitController</tt>
+                to first check if there is a stored next
+                configuration with a higher configuration number than
+                the current one, and if so, complete the shard moves
+                necessary to reconfigure to the next one.
+                
+	      </p><p class="todo">
+                Modify shardctrler to implement the above approach.
+                A controller that picks up the work from a
+                failed controller may
+                repeat <tt>FreezeShard</tt>, <tt>InstallShard</tt>,
+                and <tt>Delete</tt> RPCs; shardgrps can use <tt>Num</tt> to
+                detect duplicates and reject them.  You have completed
+                this task if your solution passes the Part B tests.
+
+</p><pre>$ cd ~/6.5840/src/shardkv1
+$ go test -run 5B
+Test (5B): Join/leave while a shardgrp is down... (reliable network)...
+  ... Passed --  time  9.2s #peers 1 #RPCs   899 #Ops  120
+Test (5B): recover controller ... (reliable network)...
+  ... Passed --  time 26.4s #peers 1 #RPCs  3724 #Ops  360
+PASS
+ok      6.5840/shardkv1 35.805s
+$</pre>
+
+                <ul class="hints">
+                  <li> The tester calls <tt>InitController</tt>
+                  when starting a controller; you can implement
+                  recovery in that method
+                    in <tt>shardctrler/shardctrler.go</tt>.
+                </li></ul>
+
+		<h3>Part C: Concurrent configuration changes <script>g("moderate")</script>(<a class="moderate" href="https://pdos.csail.mit.edu/6.824/labs/guidance.html">moderate</a>)</h3>
+
+		<p>In this part of the lab you will modify the
+		controller to allow for concurrent controllers. When a
+		controller crashes or is partitioned, the tester will
+		start a new controller, which must finish any work
+		that the old controller might have in progress (i.e.,
+		finishing moving shards like in Part B).  This means
+		that several controllers may run concurrently and
+		send RPCs to the shardgrps and the <tt>kvsrv</tt> that stores
+		configurations.
+
+		</p><p>The main challenge is to ensure these controllers
+		don't step on each other.  In Part A you already
+		fenced all the shardgrp RPCs with <tt>Num</tt> so that
+		old RPCs are rejected.  Even if several controllers
+		pick up the work of an old controller concurrently,
+		one of them succeeds and the others repeat all the
+		RPCs, the shardgrps will ignore them.
+
+                  </p><p> Thus the challenging case left is to ensure that
+		  only one controller updates the next configuration
+		  to avoid that two controllers (e.g., a partitioned
+		  one and a new one) put different configurations in
+		  the next one.  To stress this scenario, the tester runs
+		  several controllers concurrently and each one
+		  computes the next configuration by reading the
+		  current configuration and updating it for a shardgrp
+		  that left or joined, and then the tester 
+		  invokes <tt>ChangeConfigTo</tt>; thus multiple
+		  controllers may invoke <tt>ChangeConfigTo</tt> with
+		  different configuration with the same <tt>Num</tt>.
+		  You can use the version number of a key and
+		  versioned <tt>Put</tt>s to ensure that only one
+		  controller updates the next configuration and that
+		  the other invocations return without doing anything.
+                                      
+		</p><p class="todo">
+		  Modify your controller so that only one controller
+		  can post a next configuration for a
+		  configuration <tt>Num</tt>.  The tester will start
+		  many controllers but only one should
+		  start <tt>ChangeConfigTo</tt> for a new
+		  configuation.
+		  You have completed this task
+		  if you pass the concurrent tests of
+		  Part C:
+
+</p><pre>$ cd ~/6.5840/src/shardkv1
+$ go test -run TestConcurrentReliable5C
+Test (5C): Concurrent ctrlers ... (reliable network)...
+  ... Passed --  time  8.2s #peers 1 #RPCs  1753 #Ops  120
+PASS
+ok      6.5840/shardkv1 8.364s
+$ go test -run TestAcquireLockConcurrentUnreliable5C
+Test (5C): Concurrent ctrlers ... (unreliable network)...
+  ... Passed --  time 23.8s #peers 1 #RPCs  1850 #Ops  120
+PASS
+ok      6.5840/shardkv1 24.008s
+$</pre>
+
+		<ul class="hints">
+                   <li>See <tt>concurCtrler</tt> in <tt>test.go</tt>
+                     to see how the tester runs controllers concurrently.
+                </li></ul>
+
+		<p class="todo">
+		In this exercise you will put recovery of an old
+		controller together with a new controller: a new
+		controller should perform recovery from Part B.  If
+		the old controller was partitioned
+		during <tt>ChangeConfigTo</tt>, you will have to make
+		sure that the old controller doesn't interfere with the
+		new controller.  If all the controller's updates are
+		already properly fenced with <tt>Num</tt> checks from Part B,
+		you don't have to write extra code.  You have completed
+		this task if you pass the
+                <tt>Partition</tt> tests.
+
+</p><pre>$ cd ~/6.5840/src/shardkv1
+$ go test -run Partition
+Test (5C): partition controller in join... (reliable network)...
+  ... Passed --  time  7.8s #peers 1 #RPCs   876 #Ops  120
+Test (5C): controllers with leased leadership ... (reliable network)...
+  ... Passed --  time 36.8s #peers 1 #RPCs  3981 #Ops  360
+Test (5C): controllers with leased leadership ... (unreliable network)...
+  ... Passed --  time 52.4s #peers 1 #RPCs  2901 #Ops  240
+Test (5C): controllers with leased leadership ... (reliable network)...
+  ... Passed --  time 60.2s #peers 1 #RPCs 27415 #Ops 11182
+Test (5C): controllers with leased leadership ... (unreliable network)...
+  ... Passed --  time 60.5s #peers 1 #RPCs 11422 #Ops 2336
+PASS
+ok      6.5840/shardkv1 217.779s
+$</pre>
+
+                <p>You have completed implementing a highly-available
+                sharded key/value service with many shard groups for
+                scalability, reconfiguration to handle changes in
+                load, and with a fault-tolerant controller; congrats!
+
+		</p><p class="todo">Rerun all tests to check that your
+                recent changes to the controller haven't broken earlier
+                tests.
+
+      </p><div class="important">
+      <p>Gradescope will rerun the Lab 3A-D and Lab 4A-C tests
+      on your submission, in addition to the 5C tests. 
+      Before submitting, double check that your solution works:
+</p><pre>$ go test ./raft1
+$ go test ./kvraft1
+$ go test ./shardkv1</pre>
+      <p></p>
+      </div>
+
+		<h3>Part D: Extend your solution</h3>
+
+                <p>In this final part of the lab, you get to extend
+                your solution in any way you like. You will have to
+                write your own tests for whatever extensions you choose
+                to implement.
+                  
+		</p><p class="todo">Implement one of the ideas below or
+		come up with your own idea.  Write a paragraph in a
+		file <tt>extension.md</tt> describing your extension,
+		and upload <tt>extension.md</tt> to Gradescope.
+		If you would like to do one of the harder, open-ended
+		extensions, feel free to partner up with another
+		student in the class.
+
+                </p><p>Here are some ideas for possible extension (the first
+                few are easy and the later ones are more open ended):
+                  </p><ul>
+
+                    <li> <script>g("easy")</script>(<a class="easy" href="https://pdos.csail.mit.edu/6.824/labs/guidance.html">easy</a>) Change the tester
+                    to use <tt>kvraft</tt> instead of <tt>kvsrv</tt>
+                    (i.e., replace the <tt>kvsrv.StartKVServer</tt>
+                    in <tt>MakeTestMaxRaft</tt> in <tt>test.go</tt>
+                    with <tt>kvraft.StartKVServer</tt>) so that the
+                    controller uses your kvraft to store its
+                    configuration.  Write a test that checks that the
+                    controller can query and update the configuration
+                    while one of the kvraft peers is down. The
+                    existing code for the tester is distributed across
+                    <tt>src/kvtest1</tt>, <tt>src/shardkv1</tt>, and 
+                    <tt>src/tester1</tt>. 
+                    
+                    </li><li> <script>g("moderate")</script>(<a class="moderate" href="https://pdos.csail.mit.edu/6.824/labs/guidance.html">moderate</a>)
+                      Change <tt>kvsrv</tt> to implement
+                      exactly-once semantics for <tt>Put</tt>/<tt>Get</tt> as in
+                      <a href="http://nil.csail.mit.edu/6.5840/2024/labs/lab-kvsrv.html">Lab 2</a>
+                      from last year (see the dropped messages part).
+                      You may be able to port over some tests from
+                      2024 instead of having to write your own from
+                      scratch.  Implement exactly-once also in your <tt>kvraft</tt>.
+
+                    </li><li> <script>g("moderate")</script>(<a class="moderate" href="https://pdos.csail.mit.edu/6.824/labs/guidance.html">moderate</a>)
+                    Change <tt>kvsrv</tt> to support a
+                    <tt>Range</tt> function, which returns all keys in
+                    the range <tt>low</tt> key to <tt>high</tt> key.
+                    The lazy way to implement <tt>Range</tt> is to
+                    iterate through the key/value map that the server
+                    maintains; a better way is to use a data structure
+                    that supports range searches (e.g.,
+                    B-tree). Include a test that fails the lazy
+                    solution but passes on the better solution. 
+
+                    </li><li> <script>g("hard")</script>(<a class="hard" href="https://pdos.csail.mit.edu/6.824/labs/guidance.html">hard</a>) Modify your <tt>kvraft</tt>
+                      implementation to allow the leader to
+                      serve <tt>Get</tt>s without running
+                      the <tt>Get</tt> through <tt>rsm</tt>.  That is,
+                      implement the optimization described at the end
+                      of section 8 of the raft paper, including
+                      leases, to ensure that kvraft maintains
+                      linearizability. Your implementation should pass
+                      the existing kvraft tests.  You should also add
+                      a test that checks that your optimized
+                      implementation is faster (e.g., by comparing the
+                      number of RPCs) and a test that checks that term
+                      switches are slower because a new leader must wait
+                      until the lease has expired.
+
+		      
+                   </li><li><script>g("hard")</script>(<a class="hard" href="https://pdos.csail.mit.edu/6.824/labs/guidance.html">hard</a>) Support transactions
+                     in <tt>kvraft</tt> so that a developer can
+                     perform several <tt>Put</tt> and <tt>Get</tt>s
+                     atomically.  Once you have transaction, you don't
+                     need version Puts anymore; transactions subsume
+                     versioned Puts.  Look at
+                    <a href="https://etcd.io/docs/v3.4/learning/api/">etcd's
+                    transactions</a> for an example interface.  Write
+                    tests to demonstrate your extension works.
+
+                    </li><li> <script>g("hard")</script>(<a class="hard" href="https://pdos.csail.mit.edu/6.824/labs/guidance.html">hard</a>)
+		      Modify <tt>shardkv</tt> to support transactions
+		      so that a developer can perform
+		      several <tt>Put</tt>s and <tt>Get</tt>s
+		      atomically across shards.  This requires
+		      implementing two-phase-commit and two-phase
+		      locking. Write tests to demonstrate that your
+		      extension works.
+                                           
+                  </li></ul>
+                  
+		<h3>Handin procedure</h3>
+
+		<div class="important">
+			<p>
+			Before submitting, please run <em>all</em> the tests
+			one final time.
+
+			</p><p>
+			Before submitting, double check that your solution
+			works with:
+
+			</p><pre>$ go test ./raft1
+$ go test ./kvraft1
+$ go test ./shardkv1</pre>
+		</div>
+
+		<hr>
+
+	
+
+
+
+
+</body><volc-translate style="position: fixed; top: 0px; left: 0px; width: 0px; height: 0px; z-index: 2147483647;"><template shadowrootmode="open"><link rel="stylesheet" href="chrome-extension://klgfhbiooeogdfodpopgppeadghjjemk/styles/content.css"><main id="volc_translate"><div class="App__Wrapper-sc-t1bcp1-0 dljXSv"></div></main><style data-styled="active" data-styled-version="5.3.9"></style></template></volc-translate></html>
