@@ -187,11 +187,6 @@ func (kv *KVServer) applyPut(args rpc.PutArgs) rpc.PutReply {
 	entry, ok := st.store[args.Key]
 	if ok {
 		if entry.version != args.Version {
-			if entry.version == args.Version+1 && entry.value == args.Value {
-				reply := rpc.PutReply{Err: rpc.ErrMaybe}
-				kv.storePutLocked(st, args.ClientId, args.RequestId, reply)
-				return reply
-			}
 			reply := rpc.PutReply{Err: rpc.ErrVersion}
 			kv.storePutLocked(st, args.ClientId, args.RequestId, reply)
 			return reply

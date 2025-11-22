@@ -89,6 +89,7 @@ func (ck *Clerk) Put(key string, value string, version rpc.Tversion) rpc.Err {
 	reqId := ck.nextRequestId()
 	var reply rpc.PutReply
 	n := len(ck.servers)
+	firstTry := true
 
 	for {
 		contacted := false
@@ -115,13 +116,17 @@ func (ck *Clerk) Put(key string, value string, version rpc.Tversion) rpc.Err {
 					continue
 				case rpc.ErrVersion:
 					sgLog("Put key=%s gid servers=%v version conflict", key, ck.servers)
-					return rpc.ErrVersion
+					if firstTry {
+						return rpc.ErrVersion
+					}
+					return rpc.ErrMaybe
 				default:
 					sgLog("Put key=%s gid servers=%v server=%s err=%v", key, ck.servers, ck.servers[srv], reply.Err)
 					return reply.Err
 				}
 			} else {
 				sgLog("Put key=%s gid servers=%v server=%s unreachable", key, ck.servers, ck.servers[srv])
+				firstTry = false
 			}
 		}
 		if !contacted {
